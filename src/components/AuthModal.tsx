@@ -8,18 +8,19 @@ interface AuthModalProps {
 }
 
 export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
-  const [email, setEmail] = useState("pccris@gmail.com");
-  const [name, setName] = useState("Membro Genesis");
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
 
   const handleGoogleSignIn = () => {
+    if (!email.trim()) return;
     setIsSubmitting(true);
     setTimeout(() => {
       onLoginSuccess({
-        name: name || "Membro Genesis",
-        email: email || "pccris@gmail.com"
+        name: name.trim() || "Membro Genesis",
+        email: email.trim()
       });
       setIsSubmitting(false);
       onClose();

@@ -10,15 +10,49 @@ interface BillingModalProps {
 export default function BillingModal({ isOpen, onClose, onPurchaseSuccess }: BillingModalProps) {
   const [selectedPlan, setSelectedPlan] = useState<"mensal" | "vitalicio">("mensal");
   const [purchaseStep, setPurchaseStep] = useState<"plans" | "paying" | "success">("plans");
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubscribe = () => {
+  const handleSubscribe = async () => {
+    setIsRedirecting(true);
+    try {
+      const saved = localStorage.getItem("genesis_user_data");
+      let userEmail = "";
+      let userName = "";
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          userEmail = parsed.email || "";
+          userName = parsed.name || "";
+        } catch (e) {}
+      }
+
+      const res = await fetch("/api/genesis/create-preference", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          plan: selectedPlan,
+          userEmail,
+          userName
+        })
+      });
+      const data = await res.json();
+      if (data.success && data.initPoint) {
+        window.location.href = data.initPoint;
+        return;
+      }
+    } catch (err) {
+      console.error("Mercado Pago preference creation failed, proceeding with simulation fallback:", err);
+    }
+
+    // Simulation mode fallback
     setPurchaseStep("paying");
     setTimeout(() => {
       setPurchaseStep("success");
       onPurchaseSuccess(selectedPlan);
-    }, 2000);
+      setIsRedirecting(false);
+    }, 1500);
   };
 
   const handleComplete = () => {
@@ -109,9 +143,10 @@ export default function BillingModal({ isOpen, onClose, onPurchaseSuccess }: Bil
             <div className="space-y-3">
               <button
                 onClick={handleSubscribe}
-                className="w-full bg-[#2563EB] hover:bg-[#1D4ED8] active:scale-98 transition-all py-3.5 text-xs font-bold uppercase tracking-widest text-white rounded-xl flex items-center justify-center gap-1.5 cursor-pointer text-glow-blue shadow-[0_0_15px_rgba(37,99,235,0.3)]"
+                disabled={isRedirecting}
+                className="w-full bg-[#2563EB] hover:bg-[#1D4ED8] active:scale-98 transition-all py-3.5 text-xs font-bold uppercase tracking-widest text-white rounded-xl flex items-center justify-center gap-1.5 cursor-pointer text-glow-blue shadow-[0_0_15px_rgba(37,99,235,0.3)] disabled:opacity-70"
               >
-                <span>ADQUIRIR AGORA</span>
+                <span>{isRedirecting ? "REDIRECIONANDO PARA CHECKOUT..." : "ADQUIRIR AGORA"}</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
 

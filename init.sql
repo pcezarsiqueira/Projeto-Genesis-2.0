@@ -99,5 +99,5 @@ INSERT INTO app_config (key_name, config_value) VALUES (
 ) ON DUPLICATE KEY UPDATE config_value = VALUES(config_value);
 
 -- NOTA DE SEGURANÇA PARA A CONTA ADMIN:
--- O usuário Admin padrão (ex: pccris@gmail.com) será provisionado/atualizado
+-- O usuário Admin padrão (ex: admin@seu-dominio.com) será provisionado/atualizado
 -- automaticamente na inicialização da aplicação usando a variável ADMIN_PASSWORD do arquivo .env.

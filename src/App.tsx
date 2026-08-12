@@ -123,7 +123,7 @@ export default function App() {
   const [userProgress, setUserProgress] = useState<UserProgress>({
     uid: "anon_user_9921",
     name: "Convidado",
-    email: "pccris@gmail.com",
+    email: "",
     isPro: false,
     completedLessons: [],
     activeDays: 1,
@@ -162,12 +162,34 @@ export default function App() {
     return () => window.removeEventListener("popstate", checkPath);
   }, []);
 
+  // Handle return from Mercado Pago checkout (success redirect)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("payment") === "success") {
+      setUserProgress((prev) => {
+        const updated = {
+          ...prev,
+          isPro: true,
+          activeDays: Math.max(prev.activeDays || 1, 4)
+        };
+        localStorage.setItem("genesis_user_data", JSON.stringify(updated));
+        return updated;
+      });
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
   // Load real user persistence from local storage
   useEffect(() => {
     const saved = localStorage.getItem("genesis_user_data");
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
+        // Clean up legacy admin email leakage if present in browser storage
+        if (parsed.email === "pccris@gmail.com" && parsed.name === "Convidado") {
+          parsed.email = "";
+          localStorage.setItem("genesis_user_data", JSON.stringify(parsed));
+        }
         setUserProgress(parsed);
       } catch (e) {
         console.error("Failed to parse persisted data.", e);
@@ -312,7 +334,7 @@ export default function App() {
     const cleared = {
       uid: "anon_user_9921",
       name: "Convidado",
-      email: "pccris@gmail.com",
+      email: "",
       isPro: false,
       completedLessons: [],
       activeDays: 1,
@@ -456,7 +478,7 @@ export default function App() {
                       required
                       value={adminEmail}
                       onChange={(e) => setAdminEmail(e.target.value)}
-                      placeholder="pccris@gmail.com"
+                      placeholder="admin@exemplo.com"
                       className="w-full bg-[#0B1220] border border-[#1E293B] focus:border-[#2563EB] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-zinc-600 outline-none font-mono"
                     />
                   </div>
@@ -549,7 +571,7 @@ export default function App() {
                 onTriggerAuth={() => setAuthOpen(true)}
                 onLogout={handleLogout}
                 onViewResult={() => setActiveTab("result")}
-                onOpenAdmin={() => setIsAdminRoute(true)}
+                onOpenAdmin={adminToken ? () => setIsAdminRoute(true) : undefined}
               />
             )}
 

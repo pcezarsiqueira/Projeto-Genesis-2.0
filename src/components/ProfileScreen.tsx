@@ -60,7 +60,7 @@ export default function ProfileScreen({
                 </span>
               )}
             </h3>
-            <p className="text-[9px] text-[#888888] mt-0.5 font-mono">{progress.email}</p>
+            <p className="text-[9px] text-[#888888] mt-0.5 font-mono">{progress.email || "Sessão Anônima"}</p>
           </div>
         </div>
 

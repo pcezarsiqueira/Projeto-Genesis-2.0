@@ -1,10 +1,13 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express from "express";
 import path from "path";
 import crypto from "crypto";
 import fs from "fs";
 import { createServer as createViteServer } from "vite";
-import dotenv from "dotenv";
 import { GoogleGenAI, Type } from "@google/genai";
+import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
 import { MAPA_CALOR_AFFIRMATIONS, ATRACAO_MAGNETICA_AFFIRMATIONS } from "./src/data/quizzesData";
 import { DIMENSION_RECOMMENDATIONS } from "./src/data/genesisQuizData";
 
@@ -133,11 +136,11 @@ function hashPassword(password: string): string {
 const activeAdminTokens = new Set<string>();
 
 // Seed Admin Account
-const ADMIN_EMAIL = "pccris@gmail.com";
-const ADMIN_PASSWORD_HASH = hashPassword("Al#!9th18");
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "pccris@gmail.com";
+const ADMIN_PASSWORD_HASH = hashPassword(process.env.ADMIN_PASSWORD || "Al#!9th18");
 
 usersDb.set(ADMIN_EMAIL, {
-  uid: "admin_user_pccris",
+  uid: "admin_user_seed",
   name: "Administrador Genesis",
   email: ADMIN_EMAIL,
   passwordHash: ADMIN_PASSWORD_HASH,
@@ -147,8 +150,6 @@ usersDb.set(ADMIN_EMAIL, {
   createdAt: new Date().toISOString(),
   lastActivity: new Date().toISOString()
 });
-
-dotenv.config();
 
 const app = express();
 const PORT = 3000;
@@ -747,7 +748,7 @@ app.post("/api/admin/login", (req, res) => {
       success: true,
       token,
       user: {
-        uid: "admin_user_pccris",
+        uid: "admin_user_seed",
         name: "Administrador Genesis",
         email: ADMIN_EMAIL,
         role: "admin",
@@ -853,6 +854,106 @@ app.get("/api/admin/users", checkAdminAuth, (req, res) => {
     success: true,
     users: usersList
   });
+});
+
+// --- MERCADO PAGO CHECKOUT PREFERENCE & WEBHOOK ---
+let mpClient: MercadoPagoConfig | null = null;
+if (process.env.MERCADOPAGO_ACCESS_TOKEN) {
+  mpClient = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
+}
+
+app.post("/api/genesis/create-preference", async (req, res) => {
+  const { plan, userEmail, userName } = req.body;
+  const isMensal = plan === "mensal";
+  const title = isMensal ? "Projeto Genesis PRO - Assinatura Mensal" : "Projeto Genesis PRO - Acesso Vitalício";
+  const price = isMensal ? 29 : 197;
+
+  if (mpClient && process.env.MERCADOPAGO_ACCESS_TOKEN) {
+    try {
+      const preference = new Preference(mpClient);
+      const host = req.get("host") || "localhost:3000";
+      const protocol = req.protocol === "https" || req.headers["x-forwarded-proto"] === "https" ? "https" : "http";
+      const baseUrl = `${protocol}://${host}`;
+
+      const response = await preference.create({
+        body: {
+          items: [
+            {
+              id: plan || "mensal",
+              title,
+              quantity: 1,
+              unit_price: price,
+              currency_id: "BRL"
+            }
+          ],
+          payer: {
+            email: userEmail || "cliente@genesis.app",
+            name: userName || "Membro Genesis"
+          },
+          back_urls: {
+            success: `${baseUrl}/?payment=success&plan=${plan}`,
+            failure: `${baseUrl}/?payment=failure`,
+            pending: `${baseUrl}/?payment=pending`
+          },
+          auto_return: "approved",
+          notification_url: `${baseUrl}/api/genesis/webhook/mercadopago`,
+          external_reference: JSON.stringify({ email: userEmail, plan })
+        }
+      });
+
+      return res.json({
+        success: true,
+        initPoint: response.init_point || response.sandbox_init_point,
+        sandboxInitPoint: response.sandbox_init_point
+      });
+    } catch (err: any) {
+      console.error("Error creating Mercado Pago preference:", err);
+      return res.json({
+        success: true,
+        mode: "simulation",
+        message: "Simulação de pagamento ativada."
+      });
+    }
+  }
+
+  return res.json({
+    success: true,
+    mode: "simulation",
+    message: "Ambiente de teste sem token MP configurado. Pagamento simulado."
+  });
+});
+
+app.post("/api/genesis/webhook/mercadopago", async (req, res) => {
+  try {
+    const { type, data } = req.body;
+    if ((type === "payment" || req.query.topic === "payment") && mpClient) {
+      const paymentId = data?.id || req.query.id;
+      if (paymentId) {
+        const paymentApi = new Payment(mpClient);
+        const paymentInfo = await paymentApi.get({ id: String(paymentId) });
+        if (paymentInfo.status === "approved" && paymentInfo.external_reference) {
+          try {
+            const ref = JSON.parse(paymentInfo.external_reference);
+            if (ref.email && usersDb.has(ref.email)) {
+              const u = usersDb.get(ref.email);
+              usersDb.set(ref.email, {
+                ...u,
+                isPro: true,
+                activeDays: Math.max(u.activeDays || 1, 31)
+              });
+              console.log(`[MercadoPago Webhook] PRO unlocked for user: ${ref.email}`);
+            }
+          } catch (e) {
+            console.error("Error parsing external_reference in webhook:", e);
+          }
+        }
+      }
+    }
+    return res.status(200).send("OK");
+  } catch (err) {
+    console.error("Mercado Pago Webhook error:", err);
+    return res.status(200).send("OK");
+  }
 });
 
 async function startServer() {
