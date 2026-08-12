@@ -1,36 +1,24 @@
 services:
-  projeto-genesis:
+  genesis:
+    image: genesis-genesis:latest
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: projeto-genesis-app
+    container_name: genesis
     restart: always
-    environment:
-      - PORT=3000
-      - NODE_ENV=production
-      - APP_URL=https://${GENESIS_SUBDOMAIN}
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - DB_HOST=${DB_HOST}
-      - DB_PORT=${DB_PORT:-3306}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=${DB_NAME}
-      - MERCADOPAGO_ACCESS_TOKEN=${MERCADOPAGO_ACCESS_TOKEN}
-      - MERCADOPAGO_PUBLIC_KEY=${MERCADOPAGO_PUBLIC_KEY}
-      - ADMIN_EMAIL=${ADMIN_EMAIL:-pccris@gmail.com}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
-      - SESSION_SECRET=${SESSION_SECRET}
+    networks:
+      - root_default
+    env_file:
+      - .env.local
     volumes:
       - genesis_data:/app/data
       - genesis_media:/app/media
-    networks:
-      - traefik-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.projeto-genesis.rule=Host(`${GENESIS_SUBDOMAIN}`)"
-      - "traefik.http.routers.projeto-genesis.entrypoints=websecure"
-      - "traefik.http.routers.projeto-genesis.tls.certresolver=letsencrypt"
-      - "traefik.http.services.projeto-genesis.loadbalancer.server.port=3000"
+      - "traefik.http.routers.genesis.rule=Host(`${GENESIS_SUBDOMAIN:-genesis.paulinhosiqueira.com.br}`)"
+      - "traefik.http.routers.genesis.entrypoints=websecure"
+      - "traefik.http.routers.genesis.tls.certresolver=mytlschallenge"
+      - "traefik.http.services.genesis.loadbalancer.server.port=3000"
 
 volumes:
   genesis_data:
@@ -39,5 +27,5 @@ volumes:
     driver: local
 
 networks:
-  traefik-network:
+  root_default:
     external: true
