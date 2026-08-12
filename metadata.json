@@ -1,0 +1,8 @@
+{
+  "name": "Projeto Genesis",
+  "description": "Aplicativo de desafios diários para sair da inércia e da estagnação, com acompanhamento guiado.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

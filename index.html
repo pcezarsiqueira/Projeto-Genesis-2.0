@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Projeto Genesis - Desafios Diários para Sair da Inércia</title>
+    <script>
+      (function() {
+        try {
+          var target = window;
+          var desc = Object.getOwnPropertyDescriptor(Window.prototype, 'fetch') || Object.getOwnPropertyDescriptor(target, 'fetch');
+          if (desc && desc.get && !desc.set) {
+            var currentFetch = target.fetch ? target.fetch.bind(target) : fetch;
+            Object.defineProperty(target, 'fetch', {
+              get: function() { return currentFetch; },
+              set: function(newFetch) { currentFetch = newFetch; },
+              configurable: true,
+              enumerable: true
+            });
+          }
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
