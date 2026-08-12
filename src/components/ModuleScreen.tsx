@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Flame,
   Lock,
@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { GenesisDiagnosticResult } from "../types";
 import { getDay1Content } from "../data/genesisQuizData";
+import { YouTubeVideoPlayer, AudioPlayer } from "./MediaPlayers";
 
 interface JourneyScreenProps {
   selectedDayId?: string;
@@ -38,6 +39,18 @@ export default function ModuleScreen({
 }: JourneyScreenProps) {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [expandedDayIds, setExpandedDayIds] = useState<Record<string, boolean>>({});
+  const [challengeMedia, setChallengeMedia] = useState<Record<string, { videoUrl?: string; audioUrl?: string }>>({});
+
+  useEffect(() => {
+    fetch("/api/config")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.challengeMedia) {
+          setChallengeMedia(data.challengeMedia);
+        }
+      })
+      .catch((err) => console.error("Error loading challenge media config:", err));
+  }, []);
 
   const toggleExpand = (dayId: string) => {
     setExpandedDayIds((prev) => ({
@@ -277,6 +290,11 @@ export default function ModuleScreen({
     const defaultExp = day.isUnlocked && !day.isCompleted;
     const open = isExpanded(day.id, defaultExp);
 
+    // Media config for this day
+    const media = challengeMedia[day.id];
+    const videoUrl = media?.videoUrl || (day as any).videoUrl;
+    const audioUrl = media?.audioUrl || (day as any).audioUrl;
+
     return (
       <div
         key={day.id}
@@ -357,6 +375,14 @@ export default function ModuleScreen({
                     <p className="leading-relaxed">{step}</p>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Video & Audio Players if configured */}
+            {day.isUnlocked && (videoUrl || audioUrl) && (
+              <div className="space-y-3 pt-1 border-t border-[#1E293B]/60">
+                {videoUrl && <YouTubeVideoPlayer videoUrl={videoUrl} title={`Vídeo - ${day.title}`} />}
+                {audioUrl && <AudioPlayer audioUrl={audioUrl} title={`Áudio - ${day.title}`} />}
               </div>
             )}
 

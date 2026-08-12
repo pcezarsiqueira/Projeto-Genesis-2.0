@@ -21,9 +21,15 @@ import {
   Settings,
   RefreshCw,
   Phone,
-  RotateCcw
+  RotateCcw,
+  Film,
+  Music,
+  Video,
+  Save,
+  Check
 } from "lucide-react";
 import { UserProgress } from "../types";
+import { YouTubeVideoPlayer, AudioPlayer } from "./MediaPlayers";
 
 export interface LeadRecord {
   id: string;
@@ -71,7 +77,7 @@ export default function AdminDashboard({
   activeSimulationPhase,
   simulatedProfiles
 }: AdminDashboardProps) {
-  const [activeTab, setActiveTab] = useState<"leads" | "users" | "settings" | "simulator">("leads");
+  const [activeTab, setActiveTab] = useState<"leads" | "users" | "content" | "settings" | "simulator">("leads");
 
   // Data states
   const [leads, setLeads] = useState<LeadRecord[]>([]);
@@ -81,6 +87,14 @@ export default function AdminDashboard({
     tracao: "https://chat.whatsapp.com/EYlX9rIctzbFDXB6gsvrRO",
     expansao: "https://chat.whatsapp.com/IW8X2LfJuEd9sE35oj0t3o"
   });
+  const [challengeMedia, setChallengeMedia] = useState<Record<string, { videoUrl?: string; audioUrl?: string }>>({});
+
+  // Challenge Media Editor State
+  const [editDayId, setEditDayId] = useState<string>("dia_4");
+  const [editVideoUrl, setEditVideoUrl] = useState<string>("");
+  const [editAudioUrl, setEditAudioUrl] = useState<string>("");
+  const [isSavingMedia, setIsSavingMedia] = useState<boolean>(false);
+  const [mediaSaveMessage, setMediaSaveMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // Filters & Sorting
   const [searchTerm, setSearchTerm] = useState("");
@@ -101,12 +115,76 @@ export default function AdminDashboard({
     try {
       const res = await fetch("/api/config");
       const data = await res.json();
-      if (data.success && data.whatsappLinks) {
-        setWhatsappLinks(data.whatsappLinks);
+      if (data.success) {
+        if (data.whatsappLinks) setWhatsappLinks(data.whatsappLinks);
+        if (data.challengeMedia) {
+          setChallengeMedia(data.challengeMedia);
+          if (data.challengeMedia["dia_4"]) {
+            setEditVideoUrl(data.challengeMedia["dia_4"].videoUrl || "");
+            setEditAudioUrl(data.challengeMedia["dia_4"].audioUrl || "");
+          }
+        }
       }
     } catch (err) {
       console.error("Error fetching config:", err);
     }
+  };
+
+  const handleSelectDayToEdit = (dayId: string) => {
+    setEditDayId(dayId);
+    setEditVideoUrl(challengeMedia[dayId]?.videoUrl || "");
+    setEditAudioUrl(challengeMedia[dayId]?.audioUrl || "");
+    setMediaSaveMessage(null);
+  };
+
+  const handleSaveChallengeMedia = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMediaSaveMessage(null);
+    setIsSavingMedia(true);
+
+    try {
+      const res = await fetch("/api/admin/challenges/media", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          dayId: editDayId,
+          videoUrl: editVideoUrl,
+          audioUrl: editAudioUrl
+        })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        const updatedMedia = data.challengeMedia || {
+          ...challengeMedia,
+          [editDayId]: { videoUrl: editVideoUrl, audioUrl: editAudioUrl }
+        };
+        setChallengeMedia(updatedMedia);
+        setMediaSaveMessage({
+          type: "success",
+          text: `Vídeo e áudio do ${getChallengeLabel(editDayId)} salvos com sucesso!`
+        });
+      } else {
+        setMediaSaveMessage({ type: "error", text: data.error || "Erro ao salvar mídias do desafio." });
+      }
+    } catch (err: any) {
+      setMediaSaveMessage({ type: "error", text: err.message || "Erro na conexão." });
+    } finally {
+      setIsSavingMedia(false);
+    }
+  };
+
+  const getChallengeLabel = (dayId: string) => {
+    const num = parseInt(dayId.replace("dia_", ""), 10);
+    if (isNaN(num)) return dayId;
+    if (num === 1) return "Dia 1: Ação Imediata da Clareza";
+    if (num === 2) return "Dia 2: Quebra de Padrão Pessoal";
+    if (num === 3) return "Dia 3: Ativo Palpável (Fire Trial)";
+    if (num >= 4 && num <= 10) return `Dia ${num}: Desafio Fase 2 (Tração)`;
+    return `Dia ${num}: Desafio Fase 3 (Expansão)`;
   };
 
   const fetchAdminData = async () => {
@@ -228,10 +306,11 @@ export default function AdminDashboard({
         </div>
 
         {/* Tab Navigation Controls */}
-        <div className="grid grid-cols-4 gap-1.5 mt-4 pt-3 border-t border-[#1E293B]">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 mt-4 pt-3 border-t border-[#1E293B]">
           {[
-            { id: "leads", label: "Captura de Leads", icon: <Database className="w-4 h-4" />, count: leads.length },
+            { id: "leads", label: "Captura Leads", icon: <Database className="w-4 h-4" />, count: leads.length },
             { id: "users", label: "Progresso Alunos", icon: <Users className="w-4 h-4" />, count: users.length },
+            { id: "content", label: "Mídia Desafios", icon: <Film className="w-4 h-4 text-[#38BDF8]" /> },
             { id: "settings", label: "Grupos WhatsApp", icon: <Link2 className="w-4 h-4" /> },
             { id: "simulator", label: "Ver como Aluno", icon: <Eye className="w-4 h-4 text-amber-400" /> }
           ].map((tab) => {
@@ -496,6 +575,153 @@ export default function AdminDashboard({
               ))
             )}
           </div>
+        </div>
+      )}
+
+      {/* --- TAB: MÍDIA DOS DESAFIOS (VÍDEO E ÁUDIO) --- */}
+      {activeTab === "content" && (
+        <div className="space-y-4 font-sans">
+          {/* Header Card */}
+          <div className="p-4 bg-[#111B2E] border border-[#2563EB]/40 rounded-xl space-y-2">
+            <h3 className="text-xs font-display font-black text-[#38BDF8] uppercase tracking-wider flex items-center gap-1.5">
+              <Film className="w-4 h-4 text-[#38BDF8]" />
+              <span>CONFIGURAÇÃO DE VÍDEO E ÁUDIO DOS DESAFIOS</span>
+            </h3>
+            <p className="text-[11px] text-zinc-300 leading-relaxed">
+              Adicione links de vídeo (YouTube) e/ou arquivos de áudio (.mp3) para orientar os alunos nos desafios. As alterações são salvas diretamente no banco de dados sem necessidade de novo deploy do código.
+            </p>
+          </div>
+
+          {/* VPS Audio Storage Documentation Card */}
+          <div className="p-3.5 bg-[#0B1220] border border-amber-600/40 rounded-xl space-y-2">
+            <div className="flex items-center gap-2 text-xs font-mono font-bold text-amber-400 uppercase tracking-wider">
+              <Music className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>Hospedagem de Áudio no Servidor VPS:</span>
+            </div>
+            <p className="text-[11px] text-zinc-300 leading-relaxed">
+              Para adicionar áudios ao VPS, insira os arquivos <code className="bg-[#111B2E] text-amber-300 px-1.5 py-0.5 rounded border border-[#1E293B]">.mp3</code> na pasta física do projeto:
+            </p>
+            <div className="p-2.5 bg-[#111B2E] border border-[#1E293B] rounded-lg text-[10px] font-mono text-[#38BDF8] select-all">
+              ./media/audios/
+            </div>
+            <p className="text-[10px] text-zinc-400 leading-relaxed">
+              Caminho absoluto no VPS: <code className="text-zinc-200">/var/www/projeto-genesis/media/audios/dia4.mp3</code><br />
+              O link para colar no campo de áudio abaixo é: <code className="text-[#38BDF8]">/media/audios/dia4.mp3</code> ou com a URL pública HTTPS. O servidor já suporta <span className="text-amber-300">HTTP Byte-Ranges</span> (avanço/retrocesso rápido no áudio).
+            </p>
+          </div>
+
+          {/* Save Status Message */}
+          {mediaSaveMessage && (
+            <div
+              className={`p-3 rounded-xl border text-xs font-mono font-bold ${
+                mediaSaveMessage.type === "success"
+                  ? "bg-emerald-950/80 border-emerald-600 text-emerald-300"
+                  : "bg-rose-950/80 border-rose-600 text-rose-300"
+              }`}
+            >
+              {mediaSaveMessage.text}
+            </div>
+          )}
+
+          {/* Configuration Form */}
+          <form onSubmit={handleSaveChallengeMedia} className="space-y-4">
+            {/* Day Selector */}
+            <div className="p-3.5 bg-[#111B2E] border border-[#1E293B] rounded-xl space-y-1.5">
+              <label className="block text-[10px] font-mono font-bold text-zinc-300 uppercase tracking-wider">
+                1. Selecione o Desafio / Dia para Configurar:
+              </label>
+              <select
+                value={editDayId}
+                onChange={(e) => handleSelectDayToEdit(e.target.value)}
+                className="w-full bg-[#0B1220] border border-[#1E293B] focus:border-[#2563EB] rounded-lg px-3 py-2 text-xs text-white font-mono outline-none cursor-pointer"
+              >
+                <optgroup label="Fase 1: Ignição (Gratuito)">
+                  <option value="dia_1">Dia 1: Ação Imediata da Clareza</option>
+                  <option value="dia_2">Dia 2: Quebra de Padrão Pessoal</option>
+                  <option value="dia_3">Dia 3: Ativo Palpável (Fire Trial)</option>
+                </optgroup>
+                <optgroup label="Fase 2: Tração (Genesis PRO)">
+                  <option value="dia_4">Dia 4: Análise do Primeiro Bloco de Ação</option>
+                  <option value="dia_5">Dia 5: Eliminação Ativa de Distrações</option>
+                  <option value="dia_6">Dia 6: Otimização da Velocidade de Entrega</option>
+                  <option value="dia_7">Dia 7: Validação de Vitória e Ritmo</option>
+                  <option value="dia_8">Dia 8: Automação da Disciplina Diária</option>
+                  <option value="dia_9">Dia 9: Blindagem do Foco em Alta Pressão</option>
+                  <option value="dia_10">Dia 10: O Novo Padrão de Tração</option>
+                </optgroup>
+                <optgroup label="Fase 3: Expansão (Genesis PRO)">
+                  {Array.from({ length: 21 }, (_, i) => i + 11).map((dayNum) => (
+                    <option key={`dia_${dayNum}`} value={`dia_${dayNum}`}>
+                      Dia {dayNum}: Desafio de Expansão e Escala
+                    </option>
+                  ))}
+                </optgroup>
+              </select>
+            </div>
+
+            {/* Video URL Input */}
+            <div className="p-3.5 bg-[#111B2E] border border-[#1E293B] rounded-xl space-y-1.5">
+              <label className="block text-[10px] font-mono font-bold text-[#38BDF8] uppercase tracking-wider flex items-center gap-1.5">
+                <Video className="w-3.5 h-3.5 text-[#38BDF8]" />
+                <span>Link do Vídeo do YouTube (Opcional):</span>
+              </label>
+              <input
+                type="url"
+                placeholder="Ex: https://www.youtube.com/watch?v=XXXXXXXXXXX ou https://youtu.be/XXXXXXXXXXX"
+                value={editVideoUrl}
+                onChange={(e) => setEditVideoUrl(e.target.value)}
+                className="w-full bg-[#0B1220] border border-[#1E293B] focus:border-[#2563EB] rounded-lg px-3 py-2 text-xs text-white font-mono outline-none"
+              />
+              <span className="text-[9.5px] text-zinc-500 block">
+                Suporta links unlisted, links normais ou links de shorts do YouTube.
+              </span>
+            </div>
+
+            {/* Audio URL Input */}
+            <div className="p-3.5 bg-[#111B2E] border border-[#1E293B] rounded-xl space-y-1.5">
+              <label className="block text-[10px] font-mono font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Music className="w-3.5 h-3.5 text-amber-400" />
+                <span>Link Direto do Arquivo de Áudio no VPS (Opcional):</span>
+              </label>
+              <input
+                type="text"
+                placeholder="Ex: /media/audios/dia4.mp3 ou https://seu-dominio.com/media/audios/dia4.mp3"
+                value={editAudioUrl}
+                onChange={(e) => setEditAudioUrl(e.target.value)}
+                className="w-full bg-[#0B1220] border border-[#1E293B] focus:border-amber-500 rounded-lg px-3 py-2 text-xs text-white font-mono outline-none"
+              />
+              <span className="text-[9.5px] text-zinc-500 block">
+                Aponta para os arquivos salvos no servidor VPS. Deixe vazio para não exibir áudio.
+              </span>
+            </div>
+
+            {/* Live Preview Section */}
+            <div className="p-4 bg-[#111B2E] border border-[#1E293B] rounded-xl space-y-3">
+              <span className="text-[10px] font-mono font-bold text-zinc-400 uppercase tracking-widest block">
+                Pré-visualização em Tempo Real ({getChallengeLabel(editDayId)}):
+              </span>
+
+              {!editVideoUrl && !editAudioUrl ? (
+                <div className="p-3 bg-[#0B1220] border border-[#1E293B] rounded-xl text-center text-xs text-zinc-500 font-mono">
+                  Nenhum vídeo ou áudio configurado para este desafio. O aplicativo exibirá o conteúdo no formato Padrão (Somente Texto).
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {editVideoUrl && <YouTubeVideoPlayer videoUrl={editVideoUrl} title={`Pré-visualização Vídeo ${editDayId}`} />}
+                  {editAudioUrl && <AudioPlayer audioUrl={editAudioUrl} title={`Pré-visualização Áudio ${editDayId}`} />}
+                </div>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSavingMedia}
+              className="w-full bg-[#2563EB] hover:bg-[#1D4ED8] text-white py-3.5 px-4 rounded-xl font-mono font-bold text-xs uppercase tracking-wider transition-all cursor-pointer shadow-[0_0_15px_rgba(37,99,235,0.3)] flex items-center justify-center gap-2"
+            >
+              <Save className="w-4 h-4" />
+              <span>{isSavingMedia ? "Gravando no Banco..." : "Salvar Mídias do Desafio"}</span>
+            </button>
+          </form>
         </div>
       )}
 

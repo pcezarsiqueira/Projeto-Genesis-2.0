@@ -1,6 +1,7 @@
 import express from "express";
 import path from "path";
 import crypto from "crypto";
+import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
 import { GoogleGenAI, Type } from "@google/genai";
@@ -82,14 +83,45 @@ const genesisDiagnosticsTable: GenesisDiagnosticRecord[] = [
 ];
 const usersDb = new Map<string, any>();
 
-// In-memory Database Configuration Store
+// Database Configuration Store & Persistence
+const CONFIG_FILE_PATH = path.join(process.cwd(), "data", "config.json");
+
 const appConfig = {
   whatsappLinks: {
     ignicao: "https://chat.whatsapp.com/DL5ojA2RgnB3OpUuxT8Brz",
     tracao: "https://chat.whatsapp.com/EYlX9rIctzbFDXB6gsvrRO",
     expansao: "https://chat.whatsapp.com/IW8X2LfJuEd9sE35oj0t3o",
-  }
+  },
+  challengeMedia: {} as Record<string, { videoUrl?: string; audioUrl?: string }>
 };
+
+function loadPersistedConfig() {
+  try {
+    if (fs.existsSync(CONFIG_FILE_PATH)) {
+      const data = fs.readFileSync(CONFIG_FILE_PATH, "utf-8");
+      const parsed = JSON.parse(data);
+      if (parsed.whatsappLinks) appConfig.whatsappLinks = { ...appConfig.whatsappLinks, ...parsed.whatsappLinks };
+      if (parsed.challengeMedia) appConfig.challengeMedia = { ...appConfig.challengeMedia, ...parsed.challengeMedia };
+    }
+  } catch (err) {
+    console.error("Error loading persisted appConfig:", err);
+  }
+}
+
+function savePersistedConfig() {
+  try {
+    const dataDir = path.join(process.cwd(), "data");
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+    fs.writeFileSync(CONFIG_FILE_PATH, JSON.stringify(appConfig, null, 2), "utf-8");
+  } catch (err) {
+    console.error("Error saving persisted appConfig:", err);
+  }
+}
+
+// Initial config load
+loadPersistedConfig();
 
 // Password Hash Helper (using Node.js native crypto scryptSync)
 function hashPassword(password: string): string {
@@ -122,6 +154,18 @@ const app = express();
 const PORT = 3000;
 
 app.use(express.json());
+
+// Ensure media/audios directory exists on VPS for direct audio uploads
+const mediaAudiosDir = path.join(process.cwd(), "media", "audios");
+if (!fs.existsSync(mediaAudiosDir)) {
+  fs.mkdirSync(mediaAudiosDir, { recursive: true });
+}
+
+// Serve /media directory statically with HTTP Byte-Ranges support for audio streaming
+app.use("/media", express.static(path.join(process.cwd(), "media"), {
+  acceptRanges: true,
+  cacheControl: true,
+}));
 
 // Helper middleware to check Admin auth
 function checkAdminAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
@@ -679,7 +723,8 @@ app.post("/api/genesis/calculate", async (req, res) => {
 app.get("/api/config", (req, res) => {
   return res.json({
     success: true,
-    whatsappLinks: appConfig.whatsappLinks
+    whatsappLinks: appConfig.whatsappLinks,
+    challengeMedia: appConfig.challengeMedia || {}
   });
 });
 
@@ -724,10 +769,38 @@ app.post("/api/admin/config", checkAdminAuth, (req, res) => {
     if (whatsappLinks.expansao) appConfig.whatsappLinks.expansao = whatsappLinks.expansao.trim();
   }
 
+  savePersistedConfig();
+
   return res.json({
     success: true,
     message: "Configurações atualizadas com sucesso.",
-    whatsappLinks: appConfig.whatsappLinks
+    whatsappLinks: appConfig.whatsappLinks,
+    challengeMedia: appConfig.challengeMedia
+  });
+});
+
+// --- ADMIN CHALLENGE MEDIA UPDATE ---
+app.post("/api/admin/challenges/media", checkAdminAuth, (req, res) => {
+  const { dayId, videoUrl, audioUrl } = req.body;
+
+  if (!dayId || typeof dayId !== "string") {
+    return res.status(400).json({ error: "O ID do desafio (dayId) é obrigatório." });
+  }
+
+  const cleanDayId = dayId.trim();
+  appConfig.challengeMedia[cleanDayId] = {
+    videoUrl: typeof videoUrl === "string" ? videoUrl.trim() : "",
+    audioUrl: typeof audioUrl === "string" ? audioUrl.trim() : ""
+  };
+
+  savePersistedConfig();
+
+  return res.json({
+    success: true,
+    message: `Mídia do desafio ${cleanDayId} atualizada com sucesso.`,
+    dayId: cleanDayId,
+    media: appConfig.challengeMedia[cleanDayId],
+    challengeMedia: appConfig.challengeMedia
   });
 });
 
