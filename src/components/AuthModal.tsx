@@ -28,7 +28,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
   };
 
   return (
-    <div className="absolute inset-0 z-50 bg-black/85 flex items-center justify-center p-4 font-sans">
+    <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4 font-sans">
       <div className="w-full max-w-xs bg-[#111B2E] brutal-border rounded-2xl p-6 relative flex flex-col items-center">
         
         {/* Floating logo */}

@@ -217,7 +217,7 @@ export default function BillingModal({ isOpen, onClose, onPurchaseSuccess }: Bil
   };
 
   return (
-    <div className="absolute inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-end sm:items-center justify-center font-sans p-0 sm:p-4 animate-fade-in">
+    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-end sm:items-center justify-center font-sans p-0 sm:p-4 animate-fade-in">
       <div className="w-full max-w-lg bg-[#111B2E] border border-[#1E293B] rounded-t-2xl sm:rounded-2xl p-5 sm:p-6 transition-all transform animate-slide-up max-h-[92vh] overflow-y-auto no-scrollbar shadow-2xl">
         
         {/* Top Handle Line */}

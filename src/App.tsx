@@ -7,7 +7,6 @@ import React, { useState, useEffect, FormEvent } from "react";
 import { Brain, Accessibility, Eye, Flame, Award, HelpCircle, ShieldAlert, Sparkles, CreditCard, ChevronRight, Menu, Bell, Home, Grid, UserRound, Sparkle, Lock, LogOut, Key, RotateCcw } from "lucide-react";
 
 import { GenesisDiagnosticResult, UserProgress } from "./types";
-import PhoneFrame from "./components/PhoneFrame";
 import HomeScreen from "./components/HomeScreen";
 import DiagnosisScreen from "./components/DiagnosisScreen";
 import ResultScreen from "./components/ResultScreen";
@@ -357,31 +356,29 @@ export default function App() {
   }, [userProgress.proType, userProgress.proPurchaseDate]);
 
   return (
-    <PhoneFrame>
+    <div className="min-h-screen bg-[#060A12] text-slate-100 flex flex-col font-sans selection:bg-[#2563EB] selection:text-white relative">
       
       {/* Simulation Mode Banner for Admin testing */}
       {simulationPhase && !isAdminRoute && (
-        <div className="bg-amber-950/95 border-b border-amber-500/80 px-3 py-2 -mx-5 -mt-5 mb-3 flex flex-col gap-1.5 text-amber-300 z-40 shrink-0 shadow-lg font-mono">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
+        <div className="w-full bg-amber-950/95 border-b border-amber-500/80 px-4 py-2.5 text-amber-300 z-50 shrink-0 shadow-lg font-mono">
+          <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-              <span className="text-[10px] font-bold uppercase tracking-wider">
+              <span className="text-[11px] font-bold uppercase tracking-wider">
                 MODO SIMULAÇÃO — FASE {simulationPhase.toUpperCase()}
               </span>
+              <span className="text-[9px] bg-amber-900/80 border border-amber-700/60 px-2 py-0.5 rounded text-amber-300">
+                UID: admin_test_{simulationPhase}
+              </span>
             </div>
-            <span className="text-[8px] bg-amber-900/80 border border-amber-700/60 px-1.5 py-0.5 rounded text-amber-300">
-              UID: admin_test_{simulationPhase}
-            </span>
-          </div>
 
-          <div className="flex items-center justify-between text-[9px] pt-1 border-t border-amber-900/60 gap-1">
-            <div className="flex items-center gap-1">
-              <span className="text-amber-500 text-[8px] uppercase">Fase:</span>
+            <div className="flex items-center gap-2 text-[10px]">
+              <span className="text-amber-500 font-bold uppercase">Fase:</span>
               {(["ignicao", "tracao", "expansao"] as const).map((p) => (
                 <button
                   key={p}
                   onClick={() => setSimulationPhase(p)}
-                  className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase transition-all cursor-pointer ${
+                  className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase transition-all cursor-pointer ${
                     simulationPhase === p
                       ? "bg-amber-400 text-amber-950 shadow font-black"
                       : "bg-amber-900/40 text-amber-300/80 hover:text-amber-100"
@@ -390,21 +387,19 @@ export default function App() {
                   {p}
                 </button>
               ))}
-            </div>
 
-            <div className="flex items-center gap-1.5">
               <button
                 onClick={() => handleResetSimulationProfile(simulationPhase)}
-                className="px-2 py-0.5 bg-rose-950/90 hover:bg-rose-900 border border-rose-700/80 text-rose-200 rounded text-[8px] font-bold uppercase cursor-pointer flex items-center gap-1 transition-colors"
+                className="px-2 py-0.5 bg-rose-950/90 hover:bg-rose-900 border border-rose-700/80 text-rose-200 rounded text-[9px] font-bold uppercase cursor-pointer flex items-center gap-1 transition-colors"
                 title="Reiniciar este perfil isolado para o estado inicial"
               >
-                <RotateCcw className="w-2.5 h-2.5" />
+                <RotateCcw className="w-3 h-3" />
                 <span>Reiniciar</span>
               </button>
 
               <button
                 onClick={() => setIsAdminRoute(true)}
-                className="px-2 py-0.5 bg-amber-800 hover:bg-amber-700 text-white rounded text-[8px] font-bold uppercase cursor-pointer transition-colors"
+                className="px-2 py-0.5 bg-amber-800 hover:bg-amber-700 text-white rounded text-[9px] font-bold uppercase cursor-pointer transition-colors"
               >
                 Painel Admin
               </button>
@@ -415,38 +410,41 @@ export default function App() {
 
       {/* Dynamic top bar for the viewport (hidden on diagnosis or admin route) */}
       {!isDiagnosing && !isAdminRoute && (
-        <header className="flex justify-between items-center w-full h-12 border-b border-[#1E293B]/40 mb-5 shrink-0 select-none">
-          <div className="flex items-center gap-1.5 cursor-pointer" onClick={() => setActiveTab("home")}>
-            <Sparkles className="text-[#38BDF8] w-5 h-5" />
-            <h1 className="text-sm font-display font-bold text-[#F0F0F0] tracking-tighter flex items-baseline">
-              <span>PROJETO</span><span className="text-[#38BDF8] ml-1">GENESIS</span>
-            </h1>
-          </div>
+        <header className="w-full bg-[#0B1220]/90 backdrop-blur-md border-b border-[#1E293B]/60 sticky top-0 z-40 shrink-0">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 h-14 flex justify-between items-center">
+            <div className="flex items-center gap-2 cursor-pointer" onClick={() => setActiveTab("home")}>
+              <Sparkles className="text-[#38BDF8] w-5 h-5" />
+              <h1 className="text-base font-display font-bold text-[#F0F0F0] tracking-tighter flex items-baseline">
+                <span>PROJETO</span><span className="text-[#38BDF8] ml-1">GENESIS</span>
+              </h1>
+            </div>
 
-          <div className="flex items-center gap-2">
-            {!effectiveProgress.isPro && (
+            <div className="flex items-center gap-3">
+              {!effectiveProgress.isPro && (
+                <button
+                  onClick={() => setBillingOpen(true)}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#1E3A8A]/30 hover:bg-[#1E3A8A]/50 border border-[#2563EB]/40 rounded-lg text-xs font-bold text-[#38BDF8] uppercase tracking-wider cursor-pointer font-mono transition-all"
+                >
+                  <Sparkles className="w-3 h-3 text-[#38BDF8]" />
+                  <span>UPGRADE PRO</span>
+                </button>
+              )}
+
               <button
-                onClick={() => setBillingOpen(true)}
-                className="flex items-center gap-1 px-3 py-1.5 bg-[#1E3A8A]/30 hover:bg-[#1E3A8A]/50 border border-[#2563EB]/40 rounded-lg text-[8px] font-bold text-[#38BDF8] uppercase tracking-wider cursor-pointer font-mono"
+                onClick={() => setAuthOpen(true)}
+                className="p-2 bg-[#111B2E] hover:bg-[#1E293B] rounded-lg border border-[#1E293B] transition-colors relative cursor-pointer"
+                title="Minha Conta"
               >
-                <Sparkles className="w-2.5 h-2.5 text-[#38BDF8]" />
-                <span>UPGRADE PRO</span>
+                <span className="absolute top-1 right-1 w-2 h-2 bg-[#38BDF8] rounded-full" />
+                <Bell className="w-4 h-4 text-zinc-400" />
               </button>
-            )}
-
-            <button
-              onClick={() => setAuthOpen(true)}
-              className="p-1.5 bg-[#111B2E] hover:bg-[#1E293B] rounded-lg border border-[#1E293B] transition-colors relative cursor-pointer"
-            >
-              <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-[#38BDF8] rounded-full" />
-              <Bell className="w-3.5 h-3.5 text-zinc-400" />
-            </button>
+            </div>
           </div>
         </header>
       )}
 
       {/* Primary Inner Switch Viewport */}
-      <div className="flex-1 overflow-y-auto no-scrollbar relative flex flex-col z-20 select-none">
+      <main className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 py-6 pb-24 flex flex-col z-20">
         {isAdminRoute ? (
           adminToken ? (
             <AdminDashboard
@@ -629,33 +627,35 @@ export default function App() {
             )}
           </>
         )}
-      </div>
+      </main>
 
-      {/* Global simulated Bottom Bar Navigation for Device screen frame */}
+      {/* Global Bottom Navigation Bar */}
       {!isDiagnosing && !isAdminRoute && (
-        <nav className="h-14 bg-[#0B1220] border-t border-[#1E293B]/40 -mx-5 -mb-5 px-5 flex items-center justify-around z-35 shrink-0 select-none">
-          {[
-            { id: "home", label: "Home", icon: <Home className="w-4 h-4" /> },
-            { id: "modules", label: "Jornada", icon: <Flame className="w-4 h-4" /> },
-            { id: "profile", label: "Perfil", icon: <UserRound className="w-4 h-4" /> },
-            { id: "pro", label: "Pro", icon: <Sparkle className="w-4 h-4 text-glow-blue text-[#38BDF8]" /> }
-          ].map((tab) => {
-            const isSelected = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setActiveTab(tab.id as any);
-                }}
-                className={`flex flex-col items-center justify-center gap-1 py-1 px-4 cursor-pointer transition-all duration-150 ${
-                  isSelected ? "text-[#38BDF8] font-bold scale-105" : "text-zinc-500 hover:text-white"
-                }`}
-              >
-                {tab.icon}
-                <span className="text-[8px] uppercase tracking-wider font-mono font-bold leading-none">{tab.label}</span>
-              </button>
-            );
-          })}
+        <nav className="fixed bottom-0 left-0 right-0 bg-[#0B1220]/95 backdrop-blur-md border-t border-[#1E293B]/60 z-40 h-16">
+          <div className="max-w-md sm:max-w-lg md:max-w-xl mx-auto h-full flex items-center justify-around px-2">
+            {[
+              { id: "home", label: "Home", icon: <Home className="w-5 h-5" /> },
+              { id: "modules", label: "Jornada", icon: <Flame className="w-5 h-5" /> },
+              { id: "profile", label: "Perfil", icon: <UserRound className="w-5 h-5" /> },
+              { id: "pro", label: "Pro", icon: <Sparkle className="w-5 h-5 text-glow-blue text-[#38BDF8]" /> }
+            ].map((tab) => {
+              const isSelected = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setActiveTab(tab.id as any);
+                  }}
+                  className={`flex flex-col items-center justify-center gap-1 py-1 px-4 cursor-pointer transition-all duration-150 ${
+                    isSelected ? "text-[#38BDF8] font-bold scale-105" : "text-zinc-500 hover:text-white"
+                  }`}
+                >
+                  {tab.icon}
+                  <span className="text-[9px] uppercase tracking-wider font-mono font-bold leading-none">{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </nav>
       )}
 
@@ -673,6 +673,6 @@ export default function App() {
         onPurchaseSuccess={handleUpgradeSuccess}
       />
 
-    </PhoneFrame>
+    </div>
   );
 }
