@@ -7,16 +7,30 @@
     <script>
       (function() {
         try {
-          var target = window;
-          var desc = Object.getOwnPropertyDescriptor(Window.prototype, 'fetch') || Object.getOwnPropertyDescriptor(target, 'fetch');
-          if (desc && desc.get && !desc.set) {
-            var currentFetch = target.fetch ? target.fetch.bind(target) : fetch;
-            Object.defineProperty(target, 'fetch', {
-              get: function() { return currentFetch; },
-              set: function(newFetch) { currentFetch = newFetch; },
-              configurable: true,
-              enumerable: true
-            });
+          var origFetch = typeof window !== 'undefined' && window.fetch ? window.fetch.bind(window) : undefined;
+          var _currentFetch = origFetch;
+
+          var descriptor = {
+            get: function() { return _currentFetch; },
+            set: function(newFetch) {
+              if (typeof newFetch === 'function') {
+                _currentFetch = newFetch;
+              }
+            },
+            configurable: true,
+            enumerable: true
+          };
+
+          if (typeof Window !== 'undefined' && Window.prototype) {
+            try {
+              Object.defineProperty(Window.prototype, 'fetch', descriptor);
+            } catch (e) {}
+          }
+
+          if (typeof window !== 'undefined') {
+            try {
+              Object.defineProperty(window, 'fetch', descriptor);
+            } catch (e) {}
           }
         } catch (e) {}
       })();

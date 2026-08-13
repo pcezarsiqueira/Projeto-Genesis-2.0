@@ -26,7 +26,9 @@ import {
   Music,
   Video,
   Save,
-  Check
+  Check,
+  Download,
+  FileSpreadsheet
 } from "lucide-react";
 import { UserProgress } from "../types";
 import { YouTubeVideoPlayer, AudioPlayer } from "./MediaPlayers";
@@ -268,6 +270,60 @@ export default function AdminDashboard({
       return 0;
     });
 
+  const handleExportCSV = () => {
+    const dataToExport = filteredLeads.length > 0 ? filteredLeads : leads;
+    if (dataToExport.length === 0) return;
+
+    const headers = [
+      "ID",
+      "Nome",
+      "E-mail",
+      "Telefone / WhatsApp",
+      "Instagram",
+      "LinkedIn",
+      "Área de Interesse",
+      "Índice Gênesis",
+      "Estágio",
+      "Gargalo / Área a Melhorar",
+      "Data de Cadastro"
+    ];
+
+    const escapeCSV = (str: any) => {
+      if (str === null || str === undefined) return '""';
+      const stringified = String(str).replace(/"/g, '""');
+      return `"${stringified}"`;
+    };
+
+    const rows = dataToExport.map((lead) => [
+      escapeCSV(lead.id),
+      escapeCSV(lead.name),
+      escapeCSV(lead.email),
+      escapeCSV(lead.phone),
+      escapeCSV(lead.instagram || ""),
+      escapeCSV(lead.linkedin || ""),
+      escapeCSV(lead.interestTag || ""),
+      escapeCSV(lead.indiceGenesis),
+      escapeCSV(lead.estagio),
+      escapeCSV(lead.weakestDimensions?.join(", ") || ""),
+      escapeCSV(lead.createdAt ? new Date(lead.createdAt).toLocaleString("pt-BR") : "")
+    ]);
+
+    const csvContent =
+      "\uFEFF" +
+      [headers.join(";"), ...rows.map((row) => row.join(";"))].join("\r\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const today = new Date().toISOString().split("T")[0];
+    link.setAttribute("href", url);
+    link.setAttribute("download", `leads_projeto_genesis_${today}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="w-full flex flex-col space-y-5 pb-24 animate-fade-in font-sans text-[#F0F0F0]">
       
@@ -392,7 +448,7 @@ export default function AdminDashboard({
                 />
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex flex-wrap sm:flex-nowrap gap-2">
                 {/* Interest Tag Filter */}
                 <select
                   value={selectedTag}
@@ -417,6 +473,17 @@ export default function AdminDashboard({
                   <option value="score_desc">Índice Gênesis (Maior)</option>
                   <option value="score_asc">Índice Gênesis (Menor)</option>
                 </select>
+
+                {/* Export CSV / Excel Button */}
+                <button
+                  onClick={handleExportCSV}
+                  disabled={leads.length === 0}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/80 text-emerald-300 font-mono text-[10px] font-bold rounded-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0 shadow-sm"
+                  title="Baixar lista de leads em arquivo CSV (compatível com Excel e Google Sheets)"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Exportar CSV</span>
+                </button>
               </div>
             </div>
           </div>

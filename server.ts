@@ -819,6 +819,60 @@ app.get("/api/admin/leads", checkAdminAuth, (req, res) => {
   });
 });
 
+// --- ADMIN EXPORT LEADS CSV ---
+app.get("/api/admin/leads/csv", checkAdminAuth, (req, res) => {
+  const realLeads = genesisDiagnosticsTable.filter((lead) => {
+    const email = (lead.email || "").toLowerCase();
+    const uid = (lead.userId || "").toLowerCase();
+    return !email.includes("admin_test_") && !email.includes("genesis.test") && !email.includes("simulacao_") && !uid.startsWith("admin_test_");
+  });
+
+  const headers = [
+    "ID",
+    "Nome",
+    "E-mail",
+    "Telefone / WhatsApp",
+    "Instagram",
+    "LinkedIn",
+    "Área de Interesse",
+    "Índice Gênesis",
+    "Estágio",
+    "Gargalo / Área a Melhorar",
+    "Data de Cadastro"
+  ];
+
+  const escapeCSV = (str: any) => {
+    if (str === null || str === undefined) return '""';
+    const stringified = String(str).replace(/"/g, '""');
+    return `"${stringified}"`;
+  };
+
+  const rows = realLeads.map((lead) => [
+    escapeCSV(lead.id),
+    escapeCSV(lead.name),
+    escapeCSV(lead.email),
+    escapeCSV(lead.phone),
+    escapeCSV(lead.instagram || ""),
+    escapeCSV(lead.linkedin || ""),
+    escapeCSV(lead.interestTag || ""),
+    escapeCSV(lead.indiceGenesis),
+    escapeCSV(lead.estagio),
+    escapeCSV(lead.weakestDimensions?.join(", ") || ""),
+    escapeCSV(lead.createdAt ? new Date(lead.createdAt).toLocaleString("pt-BR") : "")
+  ]);
+
+  const csvContent =
+    "\uFEFF" +
+    [headers.join(";"), ...rows.map((row) => row.join(";"))].join("\r\n");
+
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename="leads_projeto_genesis_${new Date().toISOString().split("T")[0]}.csv"`
+  );
+  return res.status(200).send(csvContent);
+});
+
 // --- ADMIN GET USERS ---
 app.get("/api/admin/users", checkAdminAuth, (req, res) => {
   const usersList = Array.from(usersDb.values())
