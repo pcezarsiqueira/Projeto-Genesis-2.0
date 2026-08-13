@@ -187,8 +187,12 @@ export default function App() {
         // Clean up legacy admin email leakage if present in browser storage
         if (parsed.email === "pccris@gmail.com" && parsed.name === "Convidado") {
           parsed.email = "";
-          localStorage.setItem("genesis_user_data", JSON.stringify(parsed));
         }
+        // Ensure guest users without a purchase date start as non-PRO
+        if (!parsed.email && !parsed.proPurchaseDate) {
+          parsed.isPro = false;
+        }
+        localStorage.setItem("genesis_user_data", JSON.stringify(parsed));
         setUserProgress(parsed);
       } catch (e) {
         console.error("Failed to parse persisted data.", e);
@@ -587,41 +591,92 @@ export default function App() {
 
             {activeTab === "pro" && (
               <div className="w-full flex flex-col space-y-6 pb-24 animate-fade-in font-sans">
-                {/* Visual Pro detailing view requested by BottomNavBar pro tab */}
+                {/* Visual Pro detailing view */}
                 <div className="bg-[#111B2E] brutal-border p-6 rounded-2xl text-center space-y-5">
                   <Sparkles className="text-[#38BDF8] w-12 h-12 mx-auto animate-pulse" />
                   
-                  <div>
-                    <h3 className="text-base font-display font-black text-white uppercase tracking-tight">O MÉTODO GENESIS PRO</h3>
-                    <p className="text-xs text-[#888888] mt-2 max-w-xs mx-auto leading-relaxed">
-                      Sua jornada rumo à tração real. Elimine os bloqueios da inércia, construa disciplina diária e conquiste sua primeira vitória palpável.
-                    </p>
-                  </div>
-
-                  <div className="space-y-3 pt-4 border-t border-[#1E293B] text-left">
-                    {[
-                      { t: "Jornada Completa de Desafios", d: "Acesso a todas as etapas de ação, diagnósticos práticos e métricas de evolução." },
-                      { t: "Acompanhamento Guiado", d: "Análises e sugestões diárias para acelerar seu progresso sem travamento." },
-                      { t: "Radar de Tração em Tempo Real", d: "Visualização gráfica e detalhada dos seus eixos de evolução." }
-                    ].map((feat, idx) => (
-                      <div key={idx} className="flex gap-3">
-                        <div className="w-5 h-5 bg-[#2563EB]/20 rounded border border-[#2563EB]/50 flex items-center justify-center text-[10px] font-bold text-[#38BDF8] shrink-0 mt-0.5">
-                          ✓
-                        </div>
-                        <div>
-                          <h4 className="text-xs font-bold text-white">{feat.t}</h4>
-                          <p className="text-[10px] text-[#888888]">{feat.d}</p>
-                        </div>
+                  {!effectiveProgress.isPro ? (
+                    <>
+                      <div className="inline-block px-3.5 py-1 bg-[#2563EB]/20 border border-[#2563EB]/50 rounded-full text-[10px] font-mono font-bold text-[#38BDF8] uppercase tracking-wider mb-1">
+                        FALTA POUCO PARA SER PRO
                       </div>
-                    ))}
-                  </div>
 
-                  <button
-                    onClick={() => setBillingOpen(true)}
-                    className="w-full bg-[#2563EB] hover:bg-[#1D4ED8] text-glow-blue py-3.5 text-xs font-bold uppercase tracking-widest text-white rounded-xl transition-all cursor-pointer shadow-[0_0_20px_rgba(37,99,235,0.3)]"
-                  >
-                    {userProgress.isPro ? "VOCÊ JÁ É MEMBRO PRO" : "DESBLOQUEAR FASE 2 (TRAÇÃO) — R$ 14,90"}
-                  </button>
+                      <div>
+                        <h3 className="text-base font-display font-black text-white uppercase tracking-tight">O MÉTODO GENESIS PRO</h3>
+                        <p className="text-xs text-[#888888] mt-2 max-w-xs mx-auto leading-relaxed">
+                          Sua jornada rumo à tração real. Elimine os bloqueios da inércia, construa disciplina diária e conquiste sua primeira vitória palpável.
+                        </p>
+                      </div>
+
+                      <div className="space-y-3 pt-4 border-t border-[#1E293B] text-left">
+                        <div className="text-[10px] font-mono font-bold text-[#38BDF8] uppercase tracking-wider mb-2">
+                          O QUE VOCÊ GANHA NO GENESIS PRO:
+                        </div>
+                        {[
+                          { t: "Jornada Completa de Desafios", d: "Acesso a todas as etapas de ação, diagnósticos práticos e métricas de evolução." },
+                          { t: "Acompanhamento Guiado", d: "Análises e sugestões diárias para acelerar seu progresso sem travamento." },
+                          { t: "Radar de Tração em Tempo Real", d: "Visualização gráfica e detalhada dos seus eixos de evolução." },
+                          { t: "Comunidade VIP & Grupo de Tração", d: "Networking exclusivo com membros em execução acelerada." }
+                        ].map((feat, idx) => (
+                          <div key={idx} className="flex gap-3">
+                            <div className="w-5 h-5 bg-[#2563EB]/20 rounded border border-[#2563EB]/50 flex items-center justify-center text-[10px] font-bold text-[#38BDF8] shrink-0 mt-0.5">
+                              ✓
+                            </div>
+                            <div>
+                              <h4 className="text-xs font-bold text-white">{feat.t}</h4>
+                              <p className="text-[10px] text-[#888888]">{feat.d}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <button
+                        onClick={() => setBillingOpen(true)}
+                        className="w-full bg-[#2563EB] hover:bg-[#1D4ED8] text-glow-blue py-3.5 text-xs font-bold uppercase tracking-widest text-white rounded-xl transition-all cursor-pointer shadow-[0_0_20px_rgba(37,99,235,0.3)] flex items-center justify-center gap-2"
+                      >
+                        <span>APLICAR PROGRAMA AVANÇADO</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="inline-block px-3.5 py-1 bg-emerald-950/80 border border-emerald-500/50 rounded-full text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider mb-1">
+                        SUA ASSINATURA PRO ESTÁ ATIVA ✓
+                      </div>
+
+                      <div>
+                        <h3 className="text-base font-display font-black text-white uppercase tracking-tight">VOCÊ É MEMBRO GENESIS PRO</h3>
+                        <p className="text-xs text-[#888888] mt-2 max-w-xs mx-auto leading-relaxed">
+                          Seu plano avançado está ativo no seu perfil. Continue sua sequência de execução e acesse todos os desafios disponíveis.
+                        </p>
+                      </div>
+
+                      <div className="space-y-3 pt-4 border-t border-[#1E293B] text-left">
+                        {[
+                          { t: "Jornada Completa Liberada", d: "Acesso a todos os desafios práticos e etapas de ação." },
+                          { t: "Radar de Tração em Tempo Real", d: "Métricas completas das 5 dimensões de evolução." }
+                        ].map((feat, idx) => (
+                          <div key={idx} className="flex gap-3">
+                            <div className="w-5 h-5 bg-emerald-500/20 rounded border border-emerald-500/50 flex items-center justify-center text-[10px] font-bold text-emerald-400 shrink-0 mt-0.5">
+                              ✓
+                            </div>
+                            <div>
+                              <h4 className="text-xs font-bold text-white">{feat.t}</h4>
+                              <p className="text-[10px] text-[#888888]">{feat.d}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <button
+                        onClick={() => setActiveTab("modules")}
+                        className="w-full bg-[#2563EB] hover:bg-[#1D4ED8] text-glow-blue py-3.5 text-xs font-bold uppercase tracking-widest text-white rounded-xl transition-all cursor-pointer shadow-[0_0_20px_rgba(37,99,235,0.3)] flex items-center justify-center gap-2"
+                      >
+                        <span>AVANÇAR PARA OS DESAFIOS PRO</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             )}

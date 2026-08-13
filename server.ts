@@ -1063,9 +1063,37 @@ app.post("/api/genesis/create-preference", async (req, res) => {
 });
 
 function getReadableStatusDetail(statusDetail?: string): string {
+  if (!statusDetail) return "O pagamento não foi aprovado. Verifique os dados do cartão ou utilize o Pix Instantâneo.";
+  const detailLower = String(statusDetail).toLowerCase();
+
+  if (detailLower.includes("insufficient_amount") || detailLower.includes("saldo") || detailLower.includes("limit")) {
+    return "Cartão sem saldo ou limite suficiente. Tente outro cartão de crédito ou utilize o Pix Instantâneo.";
+  }
+  if (detailLower.includes("bad_filled_security_code") || detailLower.includes("cvv") || detailLower.includes("security_code")) {
+    return "Código de segurança (CVV) do cartão incorreto.";
+  }
+  if (detailLower.includes("bad_filled_date") || detailLower.includes("expir") || detailLower.includes("expiration")) {
+    return "Data de validade do cartão incorreta ou expirada.";
+  }
+  if (detailLower.includes("bad_filled_other") || detailLower.includes("number") || detailLower.includes("card_number")) {
+    return "Número do cartão ou dados incorretos. Por favor, revise as informações digitadas.";
+  }
+  if (detailLower.includes("call_for_authorize") || detailLower.includes("authorize")) {
+    return "Pagamento não autorizado pela operadora. Entre em contato com seu banco para autorizar a compra.";
+  }
+  if (detailLower.includes("card_disabled") || detailLower.includes("blocked")) {
+    return "O cartão está bloqueado para compras online. Ative no app do seu banco ou tente outro cartão.";
+  }
+  if (detailLower.includes("high_risk") || detailLower.includes("risk")) {
+    return "Pagamento recusado pela análise de segurança. Recomendamos realizar o pagamento via Pix Instantâneo.";
+  }
+  if (detailLower.includes("invalid_token") || detailLower.includes("params error") || detailLower.includes("parameter")) {
+    return "Sessão de pagamento expirada ou dados do cartão não reconhecidos. Por favor, digite os dados novamente ou pague via Pix.";
+  }
+
   switch (statusDetail) {
     case "cc_rejected_insufficient_amount":
-      return "Cartão sem saldo ou limite suficiente. Tente outro cartão ou meio de pagamento.";
+      return "Cartão sem saldo ou limite suficiente. Tente outro cartão de crédito ou utilize o Pix Instantâneo.";
     case "cc_rejected_bad_filled_security_code":
       return "Código de segurança (CVV) do cartão incorreto.";
     case "cc_rejected_bad_filled_date":
@@ -1073,15 +1101,15 @@ function getReadableStatusDetail(statusDetail?: string): string {
     case "cc_rejected_bad_filled_other":
       return "Dados do cartão incorretos. Por favor, revise as informações digitadas.";
     case "cc_rejected_call_for_authorize":
-      return "Pagamento não autorizado. Por favor, entre em contato com a operadora do seu cartão para autorizar a compra.";
+      return "Pagamento não autorizado pela operadora. Entre em contato com seu banco para autorizar a compra.";
     case "cc_rejected_card_disabled":
-      return "O cartão está bloqueado para compras online. Ligue para o seu banco ou tente outro cartão.";
+      return "O cartão está bloqueado para compras online. Ative no app do seu banco ou tente outro cartão.";
     case "cc_rejected_other_reason":
       return "Pagamento recusado pela operadora do cartão. Tente outro cartão ou selecione o Pix.";
     case "cc_rejected_high_risk":
       return "Pagamento recusado por análise de segurança da operadora. Tente realizar o pagamento via Pix.";
     default:
-      return "O pagamento não foi aprovado pela operadora do cartão. Verifique os dados ou utilize o Pix.";
+      return "O pagamento não foi aprovado pela operadora do cartão. Verifique os dados ou utilize o Pix Instantâneo.";
   }
 }
 
@@ -1093,22 +1121,19 @@ app.post("/api/genesis/process-payment", async (req, res) => {
   console.log(`[MercadoPago process-payment] Received request for plan '${plan}' (${planInfo.price} BRL), userEmail: '${userEmail}'`);
 
   if (!mpClient) {
-    console.log("[MercadoPago process-payment] Operating in simulation mode (no MP client or token).");
-    if (userEmail && usersDb.has(userEmail)) {
-      const u = usersDb.get(userEmail);
-      const targetDays = planInfo.planKey === "expansao" ? 30 : 10;
-      usersDb.set(userEmail, {
-        ...u,
-        isPro: true,
-        proType: planInfo.planKey,
-        proPurchaseDate: new Date().toISOString(),
-        activeDays: Math.max(u.activeDays || 1, targetDays)
-      });
-    }
-    return res.json({
-      status: "approved",
-      status_detail: "accredited",
-      message: "Pagamento aprovado em ambiente de teste."
+    console.error("[MercadoPago process-payment] MERCADOPAGO_ACCESS_TOKEN is not configured on server.");
+    return res.status(400).json({
+      status: "rejected",
+      status_detail: "missing_credentials",
+      message: "Mercado Pago não está configurado no servidor. Defina a variável MERCADOPAGO_ACCESS_TOKEN."
+    });
+  }
+
+  if (!formData || (!formData.token && !formData.payment_method_id)) {
+    return res.status(400).json({
+      status: "rejected",
+      status_detail: "missing_payment_data",
+      message: "Por favor, preencha os dados de pagamento válidos para processar a transação."
     });
   }
 
@@ -1156,19 +1181,26 @@ app.post("/api/genesis/process-payment", async (req, res) => {
           proPurchaseDate: new Date().toISOString(),
           activeDays: Math.max(u.activeDays || 1, targetDays)
         });
-        console.log(`[MercadoPago Direct] PRO unlocked (${planInfo.planKey}) for user: ${userEmail}`);
+        console.log(`[MercadoPago Real] PRO unlocked (${planInfo.planKey}) for user: ${userEmail}`);
       }
+    } else {
+      console.warn(`[MercadoPago Real] Payment NOT approved. Status: '${response.status}', Detail: '${response.status_detail}'`);
     }
 
     const userMessage = response.status === "approved"
       ? "Pagamento aprovado com sucesso!"
       : getReadableStatusDetail(response.status_detail);
 
+    const pixQrCode = response.point_of_interaction?.transaction_data?.qr_code || null;
+    const pixQrCodeBase64 = response.point_of_interaction?.transaction_data?.qr_code_base64 || null;
+
     return res.json({
       status: response.status,
       status_detail: response.status_detail,
       id: response.id,
       message: userMessage,
+      pixQrCode,
+      pixQrCodeBase64,
       transaction_details: response.transaction_details,
       point_of_interaction: response.point_of_interaction
     });
@@ -1177,10 +1209,27 @@ app.post("/api/genesis/process-payment", async (req, res) => {
       message: err.message,
       cause: err.cause || err.response?.data || err
     });
-    return res.status(400).json({
+
+    let detail = "";
+    if (err.cause) {
+      if (Array.isArray(err.cause) && err.cause.length > 0) {
+        detail = err.cause[0]?.description || err.cause[0]?.message || "";
+      } else if (typeof err.cause === "object") {
+        detail = err.cause?.description || err.cause?.message || "";
+      } else if (typeof err.cause === "string") {
+        detail = err.cause;
+      }
+    }
+    if (!detail && err.response?.data?.message) {
+      detail = err.response.data.message;
+    }
+
+    const readableMsg = getReadableStatusDetail(detail || err.message);
+
+    return res.json({
       status: "rejected",
-      status_detail: "payment_processing_failed",
-      message: err.message || "Não foi possível processar o pagamento com os dados fornecidos."
+      status_detail: detail || "payment_processing_failed",
+      message: readableMsg
     });
   }
 });
