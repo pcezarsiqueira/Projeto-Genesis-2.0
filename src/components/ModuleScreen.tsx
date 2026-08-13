@@ -435,7 +435,7 @@ export default function ModuleScreen({
                 className="w-full bg-[#0B1220] hover:bg-amber-950/40 border border-amber-600/50 text-amber-300 py-3 px-4 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all"
               >
                 <Lock className="w-4 h-4 text-amber-400" />
-                <span>Desbloquear com Genesis PRO — R$ 29/mês</span>
+                <span>Desbloquear Fase 2 — R$ 14,90</span>
               </button>
             ) : (
               <button
@@ -550,7 +550,7 @@ export default function ModuleScreen({
               onClick={onUpgradeClick}
               className="w-full bg-[#2563EB] hover:bg-[#1D4ED8] active:scale-98 text-white py-3 px-4 rounded-xl font-bold text-xs uppercase tracking-widest shadow-[0_0_20px_rgba(37,99,235,0.4)] cursor-pointer"
             >
-              Assinar Genesis PRO — R$ 29/mês
+              Desbloquear Fase 2 (Tração) — R$ 14,90
             </button>
           </div>
         )}

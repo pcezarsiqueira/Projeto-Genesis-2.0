@@ -1,5 +1,5 @@
 import dotenv from "dotenv";
-dotenv.config();
+dotenv.config({ override: true });
 
 import express from "express";
 import path from "path";
@@ -856,53 +856,136 @@ app.get("/api/admin/users", checkAdminAuth, (req, res) => {
   });
 });
 
-// --- MERCADO PAGO CHECKOUT PREFERENCE & WEBHOOK ---
-let mpClient: MercadoPagoConfig | null = null;
-if (process.env.MERCADOPAGO_ACCESS_TOKEN) {
-  mpClient = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
+// --- MERCADO PAGO CHECKOUT PREFERENCE, PROCESS PAYMENT (BRICKS) & WEBHOOK ---
+function getMpClient(): MercadoPagoConfig | null {
+  const token = process.env.MERCADOPAGO_ACCESS_TOKEN;
+  if (!token || token.trim() === "") return null;
+  return new MercadoPagoConfig({ accessToken: token.trim() });
+}
+
+app.get("/api/genesis/config", (req, res) => {
+  const publicKey = process.env.MERCADOPAGO_PUBLIC_KEY || process.env.VITE_MERCADOPAGO_PUBLIC_KEY || "";
+  return res.json({
+    publicKey,
+    hasAccessToken: !!process.env.MERCADOPAGO_ACCESS_TOKEN
+  });
+});
+
+function getPlanPricing(plan?: string) {
+  const p = (plan || "tracao").toLowerCase();
+  if (p === "expansao" || p === "fase3" || p === "mensal") {
+    return {
+      planKey: "expansao",
+      title: "Projeto Genesis - Fase 3: Expansão (30 Dias)",
+      price: 19.90
+    };
+  }
+  return {
+    planKey: "tracao",
+    title: "Projeto Genesis - Fase 2: Tração (7 Dias)",
+    price: 14.90
+  };
+}
+
+function getBaseUrl(req?: express.Request): string {
+  const envUrl = process.env.WEBHOOK_BASE_URL || process.env.PUBLIC_APP_URL || process.env.APP_URL;
+  if (envUrl && envUrl.trim() !== "") {
+    let clean = envUrl.trim().replace(/\/+$/, "");
+    if (!clean.startsWith("http://") && !clean.startsWith("https://")) {
+      clean = `https://${clean}`;
+    }
+    return clean;
+  }
+
+  if (req) {
+    const host = req.get("x-forwarded-host") || req.get("host") || "";
+    const rawProto = req.get("x-forwarded-proto") || req.protocol || "http";
+    const protocol = rawProto.split(",")[0].trim().toLowerCase() === "https" ? "https" : "http";
+    if (host) {
+      return `${protocol}://${host}`;
+    }
+  }
+
+  return "";
+}
+
+function getNotificationUrl(req?: express.Request): string | undefined {
+  const baseUrl = getBaseUrl(req);
+  if (!baseUrl) return undefined;
+
+  let httpsUrl = baseUrl;
+  if (httpsUrl.startsWith("http://")) {
+    if (!httpsUrl.includes("localhost") && !httpsUrl.includes("127.0.0.1")) {
+      httpsUrl = httpsUrl.replace(/^http:\/\//, "https://");
+    } else {
+      console.warn(`[MercadoPago] Skipping notification_url in local/dev environment (${baseUrl}).`);
+      return undefined;
+    }
+  }
+
+  if (
+    httpsUrl.includes("localhost") ||
+    httpsUrl.includes("127.0.0.1") ||
+    httpsUrl.includes("seu-dominio.com") ||
+    httpsUrl.endsWith(".local")
+  ) {
+    console.warn(`[MercadoPago] Skipping notification_url for local/placeholder domain (${baseUrl}).`);
+    return undefined;
+  }
+
+  if (!httpsUrl.startsWith("https://")) {
+    console.warn(`[MercadoPago] Skipping notification_url: protocol is not https (${baseUrl}).`);
+    return undefined;
+  }
+
+  const fullUrl = `${httpsUrl}/api/genesis/webhook/mercadopago`;
+  console.log(`[MercadoPago] Valid notification_url generated: ${fullUrl}`);
+  return fullUrl;
 }
 
 app.post("/api/genesis/create-preference", async (req, res) => {
   const { plan, userEmail, userName } = req.body;
-  const isMensal = plan === "mensal";
-  const title = isMensal ? "Projeto Genesis PRO - Assinatura Mensal" : "Projeto Genesis PRO - Acesso Vitalício";
-  const price = isMensal ? 29 : 197;
+  const planInfo = getPlanPricing(plan);
+  const mpClient = getMpClient();
 
-  if (mpClient && process.env.MERCADOPAGO_ACCESS_TOKEN) {
+  if (mpClient) {
     try {
       const preference = new Preference(mpClient);
-      const host = req.get("host") || "localhost:3000";
-      const protocol = req.protocol === "https" || req.headers["x-forwarded-proto"] === "https" ? "https" : "http";
-      const baseUrl = `${protocol}://${host}`;
+      const baseUrl = getBaseUrl(req) || "http://localhost:3000";
+      const notificationUrl = getNotificationUrl(req);
 
-      const response = await preference.create({
-        body: {
-          items: [
-            {
-              id: plan || "mensal",
-              title,
-              quantity: 1,
-              unit_price: price,
-              currency_id: "BRL"
-            }
-          ],
-          payer: {
-            email: userEmail || "cliente@genesis.app",
-            name: userName || "Membro Genesis"
-          },
-          back_urls: {
-            success: `${baseUrl}/?payment=success&plan=${plan}`,
-            failure: `${baseUrl}/?payment=failure`,
-            pending: `${baseUrl}/?payment=pending`
-          },
-          auto_return: "approved",
-          notification_url: `${baseUrl}/api/genesis/webhook/mercadopago`,
-          external_reference: JSON.stringify({ email: userEmail, plan })
-        }
-      });
+      const prefBody: any = {
+        items: [
+          {
+            id: planInfo.planKey,
+            title: planInfo.title,
+            quantity: 1,
+            unit_price: planInfo.price,
+            currency_id: "BRL"
+          }
+        ],
+        payer: {
+          email: userEmail || "cliente@genesis.app",
+          name: userName || "Membro Genesis"
+        },
+        back_urls: {
+          success: `${baseUrl}/?payment=success&plan=${planInfo.planKey}`,
+          failure: `${baseUrl}/?payment=failure`,
+          pending: `${baseUrl}/?payment=pending`
+        },
+        auto_return: "approved",
+        external_reference: JSON.stringify({ email: userEmail, plan: planInfo.planKey, price: planInfo.price })
+      };
+
+      if (notificationUrl) {
+        prefBody.notification_url = notificationUrl;
+      }
+
+      const response = await preference.create({ body: prefBody });
 
       return res.json({
         success: true,
+        preferenceId: response.id,
         initPoint: response.init_point || response.sandbox_init_point,
         sandboxInitPoint: response.sandbox_init_point
       });
@@ -911,6 +994,7 @@ app.post("/api/genesis/create-preference", async (req, res) => {
       return res.json({
         success: true,
         mode: "simulation",
+        preferenceId: "sim_pref_123",
         message: "Simulação de pagamento ativada."
       });
     }
@@ -919,13 +1003,138 @@ app.post("/api/genesis/create-preference", async (req, res) => {
   return res.json({
     success: true,
     mode: "simulation",
+    preferenceId: "sim_pref_123",
     message: "Ambiente de teste sem token MP configurado. Pagamento simulado."
   });
 });
 
-app.post("/api/genesis/webhook/mercadopago", async (req, res) => {
+function getReadableStatusDetail(statusDetail?: string): string {
+  switch (statusDetail) {
+    case "cc_rejected_insufficient_amount":
+      return "Cartão sem saldo ou limite suficiente. Tente outro cartão ou meio de pagamento.";
+    case "cc_rejected_bad_filled_security_code":
+      return "Código de segurança (CVV) do cartão incorreto.";
+    case "cc_rejected_bad_filled_date":
+      return "Data de validade do cartão incorreta ou expirada.";
+    case "cc_rejected_bad_filled_other":
+      return "Dados do cartão incorretos. Por favor, revise as informações digitadas.";
+    case "cc_rejected_call_for_authorize":
+      return "Pagamento não autorizado. Por favor, entre em contato com a operadora do seu cartão para autorizar a compra.";
+    case "cc_rejected_card_disabled":
+      return "O cartão está bloqueado para compras online. Ligue para o seu banco ou tente outro cartão.";
+    case "cc_rejected_other_reason":
+      return "Pagamento recusado pela operadora do cartão. Tente outro cartão ou selecione o Pix.";
+    case "cc_rejected_high_risk":
+      return "Pagamento recusado por análise de segurança da operadora. Tente realizar o pagamento via Pix.";
+    default:
+      return "O pagamento não foi aprovado pela operadora do cartão. Verifique os dados ou utilize o Pix.";
+  }
+}
+
+app.post("/api/genesis/process-payment", async (req, res) => {
+  const { formData, userEmail, plan } = req.body;
+  const planInfo = getPlanPricing(plan);
+  const mpClient = getMpClient();
+
+  console.log(`[MercadoPago process-payment] Received request for plan '${plan}' (${planInfo.price} BRL), userEmail: '${userEmail}'`);
+
+  if (!mpClient) {
+    console.log("[MercadoPago process-payment] Operating in simulation mode (no MP client or token).");
+    if (userEmail && usersDb.has(userEmail)) {
+      const u = usersDb.get(userEmail);
+      const targetDays = planInfo.planKey === "expansao" ? 30 : 10;
+      usersDb.set(userEmail, {
+        ...u,
+        isPro: true,
+        proType: planInfo.planKey,
+        proPurchaseDate: new Date().toISOString(),
+        activeDays: Math.max(u.activeDays || 1, targetDays)
+      });
+    }
+    return res.json({
+      status: "approved",
+      status_detail: "accredited",
+      message: "Pagamento aprovado em ambiente de teste."
+    });
+  }
+
+  try {
+    const paymentApi = new Payment(mpClient);
+    const notificationUrl = getNotificationUrl(req);
+
+    const paymentPayload: any = {
+      ...formData,
+      transaction_amount: planInfo.price,
+      description: planInfo.title,
+      external_reference: JSON.stringify({ email: userEmail, plan: planInfo.planKey, price: planInfo.price }),
+    };
+
+    if (notificationUrl) {
+      paymentPayload.notification_url = notificationUrl;
+    }
+
+    if (userEmail) {
+      paymentPayload.payer = {
+        ...(paymentPayload.payer || {}),
+        email: userEmail
+      };
+    }
+
+    console.log("[MercadoPago process-payment] Sending payload to MP API. notification_url:", paymentPayload.notification_url || "(none)");
+    const response = await paymentApi.create({ body: paymentPayload });
+
+    console.log("[MercadoPago process-payment Response]:", {
+      id: response.id,
+      status: response.status,
+      status_detail: response.status_detail,
+      payment_method_id: response.payment_method_id,
+      payment_type_id: response.payment_type_id
+    });
+
+    const targetDays = planInfo.planKey === "expansao" ? 30 : 10;
+    if (response.status === "approved") {
+      if (userEmail && usersDb.has(userEmail)) {
+        const u = usersDb.get(userEmail);
+        usersDb.set(userEmail, {
+          ...u,
+          isPro: true,
+          proType: planInfo.planKey,
+          proPurchaseDate: new Date().toISOString(),
+          activeDays: Math.max(u.activeDays || 1, targetDays)
+        });
+        console.log(`[MercadoPago Direct] PRO unlocked (${planInfo.planKey}) for user: ${userEmail}`);
+      }
+    }
+
+    const userMessage = response.status === "approved"
+      ? "Pagamento aprovado com sucesso!"
+      : getReadableStatusDetail(response.status_detail);
+
+    return res.json({
+      status: response.status,
+      status_detail: response.status_detail,
+      id: response.id,
+      message: userMessage,
+      transaction_details: response.transaction_details,
+      point_of_interaction: response.point_of_interaction
+    });
+  } catch (err: any) {
+    console.error("[MercadoPago process-payment EXCEPTION]:", {
+      message: err.message,
+      cause: err.cause || err.response?.data || err
+    });
+    return res.status(400).json({
+      status: "rejected",
+      status_detail: "payment_processing_failed",
+      message: err.message || "Não foi possível processar o pagamento com os dados fornecidos."
+    });
+  }
+});
+
+const handleMercadoPagoWebhook = async (req: express.Request, res: express.Response) => {
   try {
     const { type, data } = req.body;
+    const mpClient = getMpClient();
     if ((type === "payment" || req.query.topic === "payment") && mpClient) {
       const paymentId = data?.id || req.query.id;
       if (paymentId) {
@@ -954,7 +1163,10 @@ app.post("/api/genesis/webhook/mercadopago", async (req, res) => {
     console.error("Mercado Pago Webhook error:", err);
     return res.status(200).send("OK");
   }
-});
+};
+
+app.post("/api/genesis/webhook/mercadopago", handleMercadoPagoWebhook);
+app.post("/api/webhooks/mercadopago", handleMercadoPagoWebhook);
 
 async function startServer() {
   // Vite dev mode vs production routing fallback

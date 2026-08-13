@@ -127,7 +127,8 @@ export interface UserProgress {
   name: string;
   email: string;
   isPro: boolean;
-  proType?: "mensal" | "vitalicio";
+  proType?: "tracao" | "expansao" | "mensal" | "vitalicio";
+  proPurchaseDate?: string;
   paymentStatus?: "unpaid" | "paid" | "freemium";
   completedLessons: string[]; // lessonIds like "lc_1"
   activeDays: number;

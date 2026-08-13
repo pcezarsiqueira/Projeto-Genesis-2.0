@@ -309,12 +309,15 @@ export default function App() {
     saveProgress(updated);
   };
 
-  const handleUpgradeSuccess = (type: "mensal" | "vitalicio") => {
+  const handleUpgradeSuccess = (type: "tracao" | "expansao") => {
     const current = simulationPhase ? simulatedProfiles[simulationPhase] : userProgress;
+    const targetDays = type === "expansao" ? 30 : 10;
     const updated = {
       ...current,
       isPro: true,
-      proType: type
+      proType: type,
+      proPurchaseDate: new Date().toISOString(),
+      activeDays: Math.max(current.activeDays || 1, targetDays)
     };
     saveProgress(updated);
   };
@@ -343,6 +346,15 @@ export default function App() {
     };
     saveProgress(cleared);
   };
+
+  const isExpansaoExpired = React.useMemo(() => {
+    if (userProgress.proType === "expansao" && userProgress.proPurchaseDate) {
+      const purchasedAt = new Date(userProgress.proPurchaseDate).getTime();
+      const daysPassed = (Date.now() - purchasedAt) / (1000 * 60 * 60 * 24);
+      return daysPassed >= 30;
+    }
+    return false;
+  }, [userProgress.proType, userProgress.proPurchaseDate]);
 
   return (
     <PhoneFrame>
@@ -610,7 +622,7 @@ export default function App() {
                     onClick={() => setBillingOpen(true)}
                     className="w-full bg-[#2563EB] hover:bg-[#1D4ED8] text-glow-blue py-3.5 text-xs font-bold uppercase tracking-widest text-white rounded-xl transition-all cursor-pointer shadow-[0_0_20px_rgba(37,99,235,0.3)]"
                   >
-                    {userProgress.isPro ? "VOCÊ JÁ É MEMBRO PRO" : "ASSINAR PLANO GENESIS PRO — R$ 29/mês"}
+                    {userProgress.isPro ? "VOCÊ JÁ É MEMBRO PRO" : "DESBLOQUEAR FASE 2 (TRAÇÃO) — R$ 14,90"}
                   </button>
                 </div>
               </div>
