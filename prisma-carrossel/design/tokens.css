@@ -1,0 +1,122 @@
+/* ==========================================================================
+   PRISMA — tokens de design
+   Todas as cores, fontes, medidas e o grid ficam aqui.
+   Paleta atual = hipótese visual inicial. Para adequar à identidade
+   definitiva, troque apenas os valores abaixo.
+   ========================================================================== */
+
+@font-face {
+  font-family: "Archivo PRISMA";
+  src: url("./fonts/archivo-latin-wdth-normal.woff2") format("woff2-variations");
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  font-style: normal;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Archivo PRISMA";
+  src: url("./fonts/archivo-latin-ext-wdth-normal.woff2") format("woff2-variations");
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  font-style: normal;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Inter PRISMA";
+  src: url("./fonts/inter-latin-opsz-normal.woff2") format("woff2-variations");
+  font-weight: 100 900;
+  font-style: normal;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Inter PRISMA";
+  src: url("./fonts/inter-latin-ext-opsz-normal.woff2") format("woff2-variations");
+  font-weight: 100 900;
+  font-style: normal;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Inter PRISMA";
+  src: url("./fonts/inter-latin-opsz-italic.woff2") format("woff2-variations");
+  font-weight: 100 900;
+  font-style: italic;
+}
+
+:root {
+  /* --- Paleta base --------------------------------------------------- */
+  --cor-grafite: #1d1e21;
+  --cor-grafite-2: #2a2b30;      /* superfícies sobre o grafite */
+  --cor-branco-quente: #f4efe6;
+  --cor-cinza-suave: #e2dcd1;
+  --cor-cinza-linha: #c9c2b5;    /* fios e formas sobre fundos claros */
+  --cor-cinza-texto-claro: #b8b2a8; /* texto secundário sobre escuro */
+  --cor-cinza-texto-escuro: #57534c; /* texto secundário sobre claro */
+  --cor-dourado: #e3b23c;        /* acento */
+  --cor-dourado-profundo: #7d5f10; /* acento legível sobre fundos claros */
+
+  /* --- Papéis por fundo (usados pelos templates) ---------------------- */
+  /* escuro */
+  --escuro-fundo: var(--cor-grafite);
+  --escuro-texto: var(--cor-branco-quente);
+  --escuro-texto-2: var(--cor-cinza-texto-claro);
+  --escuro-acento: var(--cor-dourado);
+  --escuro-linha: #3c3d43;
+  --escuro-superficie: var(--cor-grafite-2);
+  /* claro */
+  --claro-fundo: var(--cor-branco-quente);
+  --claro-texto: var(--cor-grafite);
+  --claro-texto-2: var(--cor-cinza-texto-escuro);
+  --claro-acento: var(--cor-dourado-profundo);
+  --claro-linha: var(--cor-cinza-linha);
+  --claro-superficie: #ebe5da;
+  /* suave */
+  --suave-fundo: var(--cor-cinza-suave);
+  --suave-texto: var(--cor-grafite);
+  --suave-texto-2: #4f4b45;
+  --suave-acento: var(--cor-dourado-profundo);
+  --suave-linha: #bdb5a7;
+  --suave-superficie: #d6cfc2;
+  /* acento (slide de destaque) */
+  --acento-fundo: var(--cor-dourado);
+  --acento-texto: var(--cor-grafite);
+  --acento-texto-2: #3b3215;
+  --acento-acento: var(--cor-grafite);
+  --acento-linha: #b88c22;
+  --acento-superficie: #d6a42f;
+
+  /* --- Tipografia ---------------------------------------------------- */
+  --fonte-titulo: "Archivo PRISMA", "Archivo", "Inter", sans-serif;
+  --fonte-texto: "Inter PRISMA", "Inter", sans-serif;
+  --titulo-largura: 78%;        /* font-stretch dos títulos (62%–125%) */
+  --titulo-peso: 800;
+  --titulo-entrelinha: 0.96;
+  --titulo-espacamento: -0.005em;
+  --texto-peso: 450;
+  --texto-entrelinha: 1.32;
+
+  /* Escala (px na arte de 1080 px; no celular ≈ ×0,36) */
+  --tam-meta: 24px;     /* assinatura e numeração */
+  --tam-rotulo: 26px;   /* rótulos de gráficos, chamadas */
+  --tam-texto: 42px;    /* corpo */
+  --tam-complemento: 46px;
+  --tam-titulo: 92px;   /* máximo; o ajuste automático pode reduzir */
+  --tam-titulo-min: 64px;
+  --tam-display: 128px;
+
+  /* --- Formato, margens e grid -------------------------------------- */
+  --largura: 1080px;
+  --altura: 1350px;
+  --margem-x: 96px;        /* margem lateral de segurança */
+  --margem-topo: 150px;    /* início da área de conteúdo */
+  --margem-base: 110px;    /* fim da área de conteúdo */
+  --meta-topo: 64px;       /* linha da assinatura/numeração */
+  --colunas: 12;
+  --calha: 24px;
+  --espaco-1: 12px;
+  --espaco-2: 24px;
+  --espaco-3: 40px;
+  --espaco-4: 64px;
+  --espaco-5: 96px;
+  --fio: 2px;
+  --raio: 6px;
+}

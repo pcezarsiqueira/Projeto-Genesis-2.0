@@ -1,0 +1,92 @@
+{
+  "id": "2026-10-17-manipulacao-opiniao",
+  "titulo": "5 sinais de que estão manipulando sua opinião",
+  "publicacao": "2026-10-17",
+  "autor": "Paulinho Siqueira",
+  "perfil": "@opaulinhosiqueira",
+  "formato": { "largura": 1080, "altura": 1350 },
+  "tema": "prisma-padrao",
+  "_marcacao": "*texto* = destaque na cor de acento. Textos são exibidos como estão; quebras de linha são automáticas e balanceadas.",
+  "slides": [
+    {
+      "template": "capa",
+      "fundo": "escuro",
+      "numero": "5",
+      "titulo": "5 SINAIS DE QUE ESTÃO *MANIPULANDO* SUA OPINIÃO",
+      "chamada": "Arraste para o lado"
+    },
+    {
+      "template": "pergunta",
+      "fundo": "claro",
+      "grafico": "feed",
+      "titulo": "VOCÊ TEM CERTEZA DE QUE CHEGOU *SOZINHO* A ESSA OPINIÃO?",
+      "complemento": "Ou alguém escolheu o que você veria primeiro?"
+    },
+    {
+      "template": "sinal",
+      "fundo": "escuro",
+      "numero": "1",
+      "grafico": "medidor",
+      "grafico_rotulos": ["Indignação", "Vontade de conferir"],
+      "titulo": "TUDO FOI FEITO PARA PROVOCAR SUA *RAIVA.*",
+      "texto": "Quanto mais indignado você fica, menos vontade tem de conferir antes de compartilhar."
+    },
+    {
+      "template": "sinal",
+      "fundo": "claro",
+      "numero": "2",
+      "grafico": "sobreposicao",
+      "grafico_rotulos": ["O que você já acreditava", "A informação"],
+      "titulo": "A INFORMAÇÃO CONFIRMA *EXATAMENTE* O QUE VOCÊ JÁ ACREDITAVA.",
+      "texto": "Isso merece uma checagem extra. É aí que o *viés de confirmação* pode entrar em cena."
+    },
+    {
+      "template": "destaque",
+      "fundo": "acento",
+      "grafico": "salvar",
+      "titulo": "SALVE ISTO ANTES DE ENCONTRAR A PRÓXIMA NOTÍCIA ABSURDA.",
+      "complemento": "Ainda faltam três sinais, incluindo um que parece muito convincente.",
+      "progresso": { "vistos": 2, "total": 5 }
+    },
+    {
+      "template": "sinal-duplo",
+      "fundo": "escuro",
+      "blocos": [
+        {
+          "numero": "3",
+          "grafico": "multidao",
+          "titulo": "TODO MUNDO PARECE *CONCORDAR.*",
+          "texto": "Popularidade aparente não é prova."
+        },
+        {
+          "numero": "4",
+          "grafico": "excluido",
+          "titulo": "QUEM DISCORDA VIRA *INIMIGO.*",
+          "texto": "Pressão de grupo não substitui evidências."
+        }
+      ]
+    },
+    {
+      "template": "sinal",
+      "fundo": "suave",
+      "numero": "5",
+      "grafico": "imagem-falsa",
+      "titulo": "UMA IMAGEM *PERFEITA* PODE MOSTRAR ALGO QUE NUNCA ACONTECEU.",
+      "texto": "IA, cortes de vídeo e contextos falsos podem dar aparência de prova a uma invenção.",
+      "cta": { "icone": "compartilhar", "texto": "Compartilhe com alguém que vive recebendo notícias suspeitas." }
+    },
+    {
+      "template": "checklist",
+      "fundo": "escuro",
+      "titulo": "ANTES DE ACREDITAR, FAÇA ESTAS *TRÊS PERGUNTAS.*",
+      "itens": ["Quem publicou?", "Qual é a fonte original?", "O que falta nessa história?"]
+    },
+    {
+      "template": "encerramento",
+      "fundo": "claro",
+      "titulo": "VOCÊ JÁ COMPARTILHOU UMA NOTÍCIA E DEPOIS DESCOBRIU QUE ERA *FALSA?*",
+      "cta": { "icone": "comentar", "texto": "Comente sua experiência." },
+      "assinatura": "Siga @opaulinhosiqueira para aprender a pensar, comunicar e ensinar com mais clareza."
+    }
+  ]
+}

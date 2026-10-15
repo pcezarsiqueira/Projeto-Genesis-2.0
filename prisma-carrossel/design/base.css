@@ -1,0 +1,125 @@
+/* ==========================================================================
+   PRISMA — base: quadro do slide, fundos, cabeçalho, tipografia comum
+   ========================================================================== */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body { background: #111; }
+body {
+  font-family: var(--fonte-texto);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+  font-kerning: normal;
+  font-optical-sizing: auto;
+}
+
+.slide {
+  position: relative;
+  width: var(--largura);
+  height: var(--altura);
+  overflow: hidden;
+  background: var(--f-fundo);
+  color: var(--f-texto);
+  break-after: page;
+  page-break-after: always;
+}
+.slide:last-child { break-after: auto; page-break-after: auto; }
+
+/* Fundos: cada slide escolhe um e os templates usam só os papéis --f-* */
+.fundo-escuro { --f-fundo: var(--escuro-fundo); --f-texto: var(--escuro-texto); --f-texto-2: var(--escuro-texto-2); --f-acento: var(--escuro-acento); --f-linha: var(--escuro-linha); --f-superficie: var(--escuro-superficie); }
+.fundo-claro  { --f-fundo: var(--claro-fundo);  --f-texto: var(--claro-texto);  --f-texto-2: var(--claro-texto-2);  --f-acento: var(--claro-acento);  --f-linha: var(--claro-linha);  --f-superficie: var(--claro-superficie); }
+.fundo-suave  { --f-fundo: var(--suave-fundo);  --f-texto: var(--suave-texto);  --f-texto-2: var(--suave-texto-2);  --f-acento: var(--suave-acento);  --f-linha: var(--suave-linha);  --f-superficie: var(--suave-superficie); }
+.fundo-acento { --f-fundo: var(--acento-fundo); --f-texto: var(--acento-texto); --f-texto-2: var(--acento-texto-2); --f-acento: var(--acento-acento); --f-linha: var(--acento-linha); --f-superficie: var(--acento-superficie); }
+
+/* Cabeçalho discreto: assinatura + numeração */
+.meta {
+  position: absolute;
+  top: var(--meta-topo);
+  left: var(--margem-x);
+  right: var(--margem-x);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-family: var(--fonte-texto);
+  font-size: var(--tam-meta);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--f-texto-2);
+  line-height: 1;
+}
+.meta .pag { font-variant-numeric: tabular-nums; letter-spacing: 0.08em; }
+.meta .pag b { color: var(--f-texto); font-weight: 700; }
+
+/* Área de conteúdo dentro das margens de segurança */
+.conteudo {
+  position: absolute;
+  left: var(--margem-x);
+  right: var(--margem-x);
+  top: var(--margem-topo);
+  bottom: var(--margem-base);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Tipografia comum */
+.titulo {
+  font-family: var(--fonte-titulo);
+  font-stretch: var(--titulo-largura);
+  font-weight: var(--titulo-peso);
+  font-size: var(--tam-titulo);
+  line-height: var(--titulo-entrelinha);
+  letter-spacing: var(--titulo-espacamento);
+  text-wrap: balance;
+  hyphens: manual;
+  overflow-wrap: normal;
+}
+.texto {
+  font-family: var(--fonte-texto);
+  font-size: var(--tam-texto);
+  font-weight: var(--texto-peso);
+  line-height: var(--texto-entrelinha);
+  color: var(--f-texto);
+  text-wrap: pretty;
+  max-width: 30ch;
+}
+.complemento {
+  font-family: var(--fonte-texto);
+  font-size: var(--tam-complemento);
+  font-style: italic;
+  font-weight: 400;
+  line-height: 1.28;
+  color: var(--f-texto);
+  text-wrap: pretty;
+}
+.rotulo {
+  font-family: var(--fonte-titulo);
+  font-stretch: 100%;
+  font-size: var(--tam-rotulo);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--f-texto-2);
+  line-height: 1.1;
+}
+.fio { height: var(--fio); background: var(--f-linha); border: 0; }
+
+/* Destaque: em fundos escuros vira cor de acento; em claros, marca-texto */
+.hl { font-style: inherit; color: var(--f-acento); }
+.fundo-claro .hl, .fundo-suave .hl {
+  color: inherit;
+  background-image: linear-gradient(var(--cor-dourado), var(--cor-dourado));
+  background-repeat: no-repeat;
+  background-size: 100% 0.34em;
+  background-position: 0 86%;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  padding: 0 0.04em;
+}
+.texto .hl { font-weight: 650; }
+.fundo-claro .texto .hl, .fundo-suave .texto .hl { background-size: 100% 0.3em; background-position: 0 92%; }
+
+/* Fotografias do usuário: só recorte/posição e ajuste leve de exposição */
+.foto { position: relative; overflow: hidden; }
+.foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+svg { display: block; overflow: visible; }

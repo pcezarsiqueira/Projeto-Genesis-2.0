@@ -1,0 +1,170 @@
+/* ==========================================================================
+   PRISMA — composição de cada template (função narrativa)
+   Medidas em px na arte 1080 × 1350. Área de conteúdo: 888 × 1090.
+   ========================================================================== */
+
+/* Numerais de sinal (compartilhados) */
+.sinal-num span {
+  display: block;
+  font-family: var(--fonte-titulo);
+  font-stretch: 68%;
+  font-weight: 900;
+  font-size: 300px;
+  line-height: 0.78;
+  letter-spacing: -0.03em;
+  color: var(--f-acento);
+  font-variant-numeric: lining-nums;
+}
+.sinal-num--vazado span { color: transparent; -webkit-text-stroke: 3px var(--f-texto); }
+
+/* ---- CAPA --------------------------------------------------------------- */
+.capa { justify-content: space-between; }
+.capa-topo { display: flex; justify-content: space-between; align-items: flex-end; }
+.capa-num {
+  font-family: var(--fonte-titulo);
+  font-stretch: 66%;
+  font-weight: 900;
+  font-size: 540px;
+  line-height: 0.76;
+  letter-spacing: -0.04em;
+  color: var(--f-acento);
+}
+.capa-grafico { margin-bottom: 4px; }
+.capa-titulo { color: var(--f-texto); margin-top: 48px; }
+.capa-rodape { display: flex; align-items: center; gap: 22px; margin-top: 56px; color: var(--f-texto-2); }
+.capa-fio { flex: 1; height: var(--fio); background: var(--f-linha); }
+.capa-seta { color: var(--f-acento); }
+/* Capa com fotografia: foto enquadrada no topo, tipografia embaixo */
+.capa-foto { position: absolute; left: var(--margem-x); right: var(--margem-x); top: 130px; height: 560px; border-radius: var(--raio); }
+.capa--foto { top: 730px; }
+.capa--foto .capa-topo { display: none; }
+.capa--foto .capa-titulo { margin-top: 0; }
+.capa--foto .capa-rodape { margin-top: 32px; }
+
+/* ---- PERGUNTA ----------------------------------------------------------- */
+.pergunta { justify-content: space-between; }
+.pergunta-titulo { margin-top: 24px; }
+.pergunta-base { display: flex; flex-direction: column; gap: 48px; }
+.pergunta-linha { display: grid; grid-template-columns: 1fr 300px; gap: 40px; align-items: end; }
+.pergunta-grafico svg { width: 300px; height: auto; }
+.pergunta-complemento { font-size: 46px; text-wrap: balance; }
+
+/* ---- SINAL (a, b, c) ---------------------------------------------------- */
+.sinal-rotulo { color: var(--f-texto-2); }
+.sinal .titulo { margin-top: 20px; }
+.sinal .texto { margin-top: 32px; }
+
+.sinal--a .sinal-topo { display: flex; justify-content: space-between; align-items: flex-end; }
+.sinal--a .sinal-corpo { margin-top: auto; display: flex; flex-direction: column; }
+.sinal--a .sinal-grafico { width: 480px; padding-bottom: 10px; }
+.sinal--a .sinal-num span { font-size: 360px; }
+.sinal-marca { display: block; width: 96px; height: 6px; background: var(--f-acento); margin-top: 40px; }
+.sinal--a .sinal-marca + .texto { margin-top: 28px; }
+
+.sinal--b .sinal-base { margin-top: auto; display: flex; justify-content: space-between; align-items: flex-end; }
+.sinal--b .sinal-num span { font-size: 280px; }
+
+.sinal--c .sinal-grafico { margin-bottom: 44px; }
+.sinal-cabeca { display: flex; align-items: baseline; gap: 18px; }
+.sinal-num--mini {
+  font-family: var(--fonte-titulo); font-stretch: 68%; font-weight: 900;
+  font-size: 72px; line-height: 0.9; color: var(--f-texto);
+}
+.sinal--c .titulo { margin-top: 14px; }
+.sinal--c .texto { margin-top: 26px; }
+
+/* Faixa de CTA */
+.cta { display: flex; align-items: center; gap: 26px; }
+.sinal--c .cta {
+  margin-top: auto;
+  background: var(--cor-grafite);
+  color: var(--cor-branco-quente);
+  border-radius: var(--raio);
+  padding: 30px 40px;
+}
+.sinal--c .cta-icone { color: var(--cor-dourado); flex: none; }
+.cta-texto { font-family: var(--fonte-texto); font-size: 36px; font-weight: 600; line-height: 1.25; text-wrap: pretty; }
+
+/* ---- DESTAQUE ----------------------------------------------------------- */
+.destaque { justify-content: space-between; }
+.destaque-icone { color: var(--f-texto); width: 120px; }
+.destaque-titulo { margin-top: 8px; }
+.destaque-base { display: flex; flex-direction: column; gap: 44px; }
+.destaque-complemento { max-width: 17em; color: var(--f-texto); }
+
+/* ---- DOIS SINAIS -------------------------------------------------------- */
+.duplo { justify-content: space-between; }
+.duplo-bloco { flex: 1; display: grid; grid-template-columns: 180px 1fr; column-gap: 20px; align-content: center; }
+.duplo-fio { margin: 8px 0; }
+.duplo-num span { font-size: 230px; }
+.duplo-titulo { margin-top: 16px; }
+.duplo-texto { margin-top: 22px; color: var(--f-texto-2); max-width: none; }
+.duplo-grafico { margin-top: 36px; }
+
+/* ---- CHECKLIST ---------------------------------------------------------- */
+.checklist-titulo { margin-top: 8px; }
+.cartao {
+  position: relative;
+  margin: auto 18px 18px;
+  background: var(--cor-branco-quente);
+  color: var(--cor-grafite);
+  border-radius: var(--raio);
+  padding: 36px 44px;
+  outline: 3px dashed var(--f-texto-2);
+  outline-offset: 16px;
+}
+.cartao-tesoura {
+  position: absolute; top: -36px; left: 40px;
+  padding: 0 10px; background: var(--f-fundo); color: var(--f-texto-2);
+}
+.cartao-tesoura svg { width: 36px; height: 36px; }
+.cartao-lista { list-style: none; }
+.cartao-lista li { display: flex; align-items: center; gap: 32px; padding: 40px 0; }
+.cartao-lista li + li { border-top: 2px solid var(--cor-cinza-linha); }
+.cartao-n {
+  flex: none; width: 92px; height: 92px; border-radius: 50%;
+  background: var(--cor-dourado); color: var(--cor-grafite);
+  display: grid; place-items: center;
+  font-family: var(--fonte-titulo); font-stretch: 80%; font-weight: 800; font-size: 46px; line-height: 1;
+}
+.cartao-item {
+  font-family: var(--fonte-titulo); font-stretch: 82%; font-weight: 700;
+  font-size: 58px; line-height: 1.05; letter-spacing: -0.005em;
+}
+
+/* ---- ENCERRAMENTO ------------------------------------------------------- */
+.encerramento { bottom: 440px; justify-content: space-between; }
+.encerramento-titulo { margin-top: 16px; }
+.cta--grande .cta-icone {
+  flex: none; width: 92px; height: 92px; border-radius: 50%;
+  background: var(--cor-dourado); color: var(--cor-grafite);
+  display: grid; place-items: center;
+}
+.cta--grande .cta-texto { font-size: 52px; font-weight: 700; letter-spacing: -0.01em; }
+.faixa {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 380px;
+  background: var(--f-fundo); color: var(--f-texto);
+}
+.faixa-conteudo { position: absolute; left: var(--margem-x); right: var(--margem-x); top: 64px; display: flex; flex-direction: column; gap: 22px; }
+.faixa-texto { font-size: 40px; font-weight: 450; line-height: 1.32; max-width: 19.5em; text-wrap: pretty; }
+.faixa-texto strong { color: var(--f-acento); font-weight: 700; }
+
+/* ---- GRÁFICOS ----------------------------------------------------------- */
+.g-medidor { display: flex; flex-direction: column; gap: 40px; }
+.g-medidor .rotulo { font-size: 28px; color: var(--f-texto); }
+.g-medidor-linha { display: flex; flex-direction: column; gap: 14px; }
+.g-barra { height: 28px; background: var(--f-linha); border-radius: 4px; overflow: hidden; }
+.g-barra i { display: block; height: 100%; border-radius: 4px; }
+
+.g-sobreposicao { display: flex; flex-direction: column; align-items: flex-end; gap: 22px; }
+.g-sobreposicao svg { width: 420px; height: auto; }
+.g-legenda { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.g-legenda .rotulo { display: flex; align-items: center; gap: 14px; font-size: 26px; color: var(--f-texto); }
+.g-tracinho { display: inline-block; width: 36px; height: 0; border-top: 3px solid var(--f-texto); }
+.g-tracinho--tracejado { border-top-style: dashed; }
+
+.g-progresso { display: flex; align-items: center; gap: 28px; }
+.g-pontos { display: flex; gap: 14px; }
+.g-ponto { width: 30px; height: 30px; border-radius: 50%; border: 3px solid var(--f-texto); }
+.g-ponto--cheio { background: var(--f-texto); }
+.g-progresso .rotulo { color: var(--f-texto); }
