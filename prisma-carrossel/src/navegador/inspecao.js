@@ -89,8 +89,8 @@ window.__prismaInspecionar = function (opts) {
     // 2. Ajuste automático
     slide.querySelectorAll("[data-fit]").forEach(function (el) {
       if (el.dataset.fitOk !== "sim") erros.push("texto não coube na altura reservada mesmo no corpo mínimo: [" + el.dataset.box + "]");
-      else if (parseFloat(el.dataset.fitFinal) < parseFloat(el.dataset.fitMax))
-        avisos.push("corpo reduzido automaticamente: [" + el.dataset.box + "] " + el.dataset.fitMax + "→" + el.dataset.fitFinal + "px");
+      else if (parseFloat(el.dataset.fitFinal) < parseFloat(el.dataset.fitMaxEfetivo || el.dataset.fitMax))
+        avisos.push("corpo reduzido automaticamente: [" + el.dataset.box + "] " + (el.dataset.fitMaxEfetivo || el.dataset.fitMax) + "→" + el.dataset.fitFinal + "px");
     });
 
     // 3. Caixas: área de segurança, transbordamento, sobreposição

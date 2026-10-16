@@ -2,6 +2,7 @@
 //   node src/build.js [id-ou-pasta-do-carrossel]
 // Gera em saida/<id>/: slide-01..NN.png, carrossel-completo.pdf,
 // visao-geral.png, previa.html, relatorio-validacao.{json,md} e fonte/.
+// A função exportarCarrossel() é a mesma usada pelo servidor do Studio.
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -10,6 +11,7 @@ import { renderizarDocumento } from "./render.js";
 import { htmlVisaoGeral, htmlPrevia } from "./saidas.js";
 import { validarArquivos } from "./validacao.js";
 import { pad2, textosEsperados } from "./util.js";
+import { OPCOES_INSPECAO } from "./opcoes-inspecao.js";
 
 export const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -28,17 +30,13 @@ export function localizarCarrossel(arg) {
   }
   const carrossel = JSON.parse(fs.readFileSync(path.join(dir, "carrossel.json"), "utf8"));
   carrossel.id ||= path.basename(dir);
+  // Projetos do Studio guardam as fotos em <projeto>/fotos; os antigos, em assets/.
+  const fotos = path.join(dir, "fotos");
+  Object.defineProperty(carrossel, "__dirFotos", { value: fs.existsSync(fotos) ? fotos : undefined, enumerable: false });
   return carrossel;
 }
 
-export const OPCOES_INSPECAO = {
-  zonaConteudo: { x: 90, y: 120, r: 990, b: 1262 },
-  zonaMeta: { x: 60, y: 40, r: 1020, b: 1310 },
-  corpoMinimo: 24,
-  corpoMinimoMeta: 22,
-  escalaCelular: 390 / 1080, // largura típica de tela de celular
-  caracteresPorLinhaMax: 44,
-};
+export { OPCOES_INSPECAO };
 
 export async function abrirSlides(browser, carrossel, htmlPath) {
   const { largura, altura } = carrossel.formato;
@@ -87,27 +85,28 @@ export function resumoMarkdown(carrossel, dom, arquivos, falhas) {
   return { md: L.join("\n"), totalErros };
 }
 
-async function main() {
+// Exporta um carrossel completo para dirSaida. Reutilizável pelo servidor do
+// Studio. Se "browser" não for passado, abre e fecha um Chromium próprio.
+export async function exportarCarrossel({ carrossel, dirSaida, dirFotos, browser: navegadorExterno, log = () => {} }) {
   const t0 = Date.now();
-  const carrossel = localizarCarrossel(process.argv[2]);
-  const dirSaida = path.join(RAIZ, "saida", carrossel.id);
   const dirFonte = path.join(dirSaida, "fonte");
   fs.mkdirSync(dirFonte, { recursive: true });
   for (const f of fs.readdirSync(dirSaida)) if (/^slide-\d+\.png$/.test(f)) fs.rmSync(path.join(dirSaida, f));
 
   const htmlPath = path.join(dirFonte, "slides.html");
-  fs.writeFileSync(htmlPath, renderizarDocumento(carrossel, { raiz: RAIZ, destinoHtml: htmlPath }));
-  console.log(`▸ ${carrossel.titulo} (${carrossel.slides.length} slides) → ${path.relative(process.cwd(), dirSaida)}`);
+  fs.writeFileSync(htmlPath, renderizarDocumento(carrossel, { raiz: RAIZ, destinoHtml: htmlPath, dirFotos }));
 
-  const browser = await chromium.launch();
+  const browser = navegadorExterno || (await chromium.launch());
+  const paginas = [];
   try {
     const { page, inspecao, falhas } = await abrirSlides(browser, carrossel, htmlPath);
+    paginas.push(page);
 
     // 1. PNGs individuais
     for (let i = 1; i <= carrossel.slides.length; i++) {
       await page.locator(`#slide-${pad2(i)}`).screenshot({ path: path.join(dirSaida, `slide-${pad2(i)}.png`), animations: "disabled" });
     }
-    console.log("  ✔ PNGs");
+    log("PNGs");
 
     // 2. PDF multipágina (vetorial, texto selecionável)
     const { largura, altura } = carrossel.formato;
@@ -117,7 +116,7 @@ async function main() {
       printBackground: true, preferCSSPageSize: true,
       margin: { top: 0, right: 0, bottom: 0, left: 0 },
     });
-    console.log("  ✔ PDF");
+    log("PDF");
 
     // 3. Visão geral (folha de contato)
     const visaoHtml = path.join(dirFonte, "visao-geral.html");
@@ -125,28 +124,38 @@ async function main() {
     const tokens = path.relative(dirFonte, path.join(RAIZ, "design/tokens.css")).split(path.sep).join("/");
     fs.writeFileSync(visaoHtml, htmlVisaoGeral(carrossel, relV, tokens));
     const pv = await browser.newPage({ viewport: { width: 1196, height: 800 }, deviceScaleFactor: 1 });
+    paginas.push(pv);
     await pv.goto(pathToFileURL(visaoHtml).href, { waitUntil: "load" });
     await pv.evaluate(() => document.fonts.ready);
     await pv.locator(".folha").screenshot({ path: path.join(dirSaida, "visao-geral.png") });
-    console.log("  ✔ visão geral");
+    log("visão geral");
 
     // 4. Prévia navegável
     fs.writeFileSync(path.join(dirSaida, "previa.html"), htmlPrevia(carrossel));
-    console.log("  ✔ prévia");
+    log("prévia");
 
     // 5. Validação
     const arquivos = await validarArquivos(carrossel, dirSaida);
     const { md, totalErros } = resumoMarkdown(carrossel, inspecao, arquivos, falhas);
     fs.writeFileSync(path.join(dirSaida, "relatorio-validacao.md"), md);
     fs.writeFileSync(path.join(dirSaida, "relatorio-validacao.json"), JSON.stringify({ dom: inspecao, arquivos, falhas }, null, 2));
-    console.log("\n" + md);
-    console.log(`Concluído em ${((Date.now() - t0) / 1000).toFixed(1)} s.`);
-    process.exitCode = totalErros ? 1 : 0;
+    return { md, totalErros, inspecao, arquivos, falhas, segundos: (Date.now() - t0) / 1000 };
   } finally {
-    await browser.close();
+    for (const p of paginas) await p.close().catch(() => {});
+    if (!navegadorExterno) await browser.close();
   }
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+async function main() {
+  const carrossel = localizarCarrossel(process.argv[2]);
+  const dirSaida = path.join(RAIZ, "saida", carrossel.id);
+  console.log(`▸ ${carrossel.titulo} (${carrossel.slides.length} slides) → ${path.relative(process.cwd(), dirSaida)}`);
+  const r = await exportarCarrossel({ carrossel, dirSaida, dirFotos: carrossel.__dirFotos, log: (m) => console.log(`  ✔ ${m}`) });
+  console.log("\n" + r.md);
+  console.log(`Concluído em ${r.segundos.toFixed(1)} s.`);
+  process.exitCode = r.totalErros ? 1 : 0;
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   main().catch((e) => { console.error("✘", e.message); process.exit(1); });
 }
