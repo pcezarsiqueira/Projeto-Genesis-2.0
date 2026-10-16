@@ -477,6 +477,7 @@ await teste("U1. Minha Biblioteca: upload múltiplo, álbum, etiquetas, favorito
   await pagina.waitForTimeout(400);
   // ponto de interesse
   const foco = pagina.locator(".mb-foco");
+  await foco.scrollIntoViewIfNeeded();
   const caixa = await foco.boundingBox();
   await pagina.mouse.click(caixa.x + caixa.width * 0.5, caixa.y + caixa.height * 0.3);
   await pagina.waitForTimeout(400);

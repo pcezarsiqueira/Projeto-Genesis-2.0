@@ -160,7 +160,7 @@ a { color: inherit; }
 .campo--estreito { max-width: 220px; }
 .campo-rotulo { font-size: 13px; font-weight: 600; }
 .campo-rotulo em { font-style: normal; color: var(--ui-texto-3); font-weight: 500; }
-input:not([type=range]):not([type=file]), select, textarea {
+input:not([type=range]):not([type=file]):not([type=checkbox]):not([type=radio]), select, textarea {
   width: 100%; border: 1px solid var(--ui-borda-forte); border-radius: var(--ui-raio); background: #fff; padding: 8px 10px; min-height: 36px;
 }
 textarea { resize: vertical; line-height: 1.4; }
@@ -352,3 +352,5 @@ input[type=range] { width: 100%; accent-color: var(--ui-primario); }
 .fonte-linha > div { flex: 1; display: flex; flex-direction: column; gap: 6px; }
 .fonte-linha input { max-width: 340px; }
 .campo--meio { max-width: 520px; }
+
+input[type=checkbox], input[type=radio] { width: 16px; height: 16px; margin: 0; flex: none; accent-color: var(--ui-primario); }
