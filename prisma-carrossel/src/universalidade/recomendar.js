@@ -50,6 +50,9 @@ export const FUNCOES = {
   exemplo: { funcao: "Mostrar uma cena concreta", emocao: "Identificação", preferidos: ["cotidiano", "cultura-brasileira"], tipografiaBase: 55, layout: "Cena em destaque; uma foto própria da situação pode substituir a descrição." },
 };
 
+export const NIVEL_FAMILIARIDADE = { alta: "alta", media: "média", baixa: "baixa" };
+export const NIVEL_DISTRACAO = { baixa: "baixo", media: "médio", alta: "alto" };
+
 export const TIPOS_CONEXAO = {
   literal: "Literal: mostra o próprio assunto",
   metaforica: "Metafórica: representa o conceito",

@@ -24,6 +24,7 @@ import { buscar, baixarResultado, descreverConectores, urlManual } from "./conec
 import { lerConfig, salvarConfig, publico } from "./integracoes.js";
 import { statusIA } from "./ia.js";
 import { relatorioUniversalidade, FILTROS, CRITERIOS } from "../src/universalidade/recomendar.js";
+import { markdownUniversalidade } from "../src/universalidade/relatorio.js";
 
 const HOST = "127.0.0.1";
 const PORTA_INICIAL = Number(process.env.PRISMA_PORTA) || 4317;
@@ -340,22 +341,6 @@ dl.get("/:id/universalidade", (req, res) => {
 });
 app.use("/download", dl);
 
-function markdownUniversalidade(c, rel) {
-  const L = [`# Universalidade visual — ${c.titulo}`, "", "Gerado pelo PRISMA Studio com o repertório curado e regras locais (sem IA). Pontuações são estimativas editoriais de 0 a 100, não previsões de alcance; familiaridade é hipótese, sem dados de audiência.", ""];
-  for (const s of rel) {
-    L.push(`## Slide ${s.slide} · ${s.titulo}`, "", `- **Função:** ${s.funcao}`, `- **Conceito central:** ${s.conceitoCentral}`, `- **Reação pretendida:** ${s.emocao}`, `- **Layout recomendado:** ${s.layout}`, `- **Apenas tipografia:** ${s.tipografia.pontuacao}/100. ${s.tipografia.justificativa}`, "");
-    for (const r of s.referencias) {
-      L.push(`### ${r.pontuacao.total}/100 · ${r.nome}${r.ficha ? ` (${r.ficha})` : ""}`, `${r.rotuloTipo}. ${r.conexao}`, "",
-        `Familiaridade estimada: ${r.familiaridade} (hipótese) · força metafórica ${r.metafora}/3 · risco de distração ${r.distracao} · imagem: ${r.statusImagem.rotulo}.`);
-      if (r.imagem?.nota) L.push(`Imagem: ${r.imagem.nota}`);
-      if (r.verificar) L.push(`⚠ Verificar: ${r.verificar}`);
-      L.push("");
-    }
-    if (s.fotosSugeridas.length) L.push("**Da sua biblioteca:** " + s.fotosSugeridas.map((f) => `${f.imagem.nome} (${f.motivos.join("; ")})`).join(" · "), "");
-  }
-  L.push("## Critérios da pontuação", "", ...CRITERIOS.map((x) => `- ${x}`), "");
-  return L.join("\n");
-}
 
 /* ---------- interface ---------- */
 if (fs.existsSync(DIST)) {

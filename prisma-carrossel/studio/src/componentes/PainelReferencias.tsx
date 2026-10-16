@@ -10,7 +10,7 @@ import { BuscaExterna } from "./BuscaExterna";
 import { SeletorImagem } from "./SeletorImagem";
 import { aplicarImagem } from "./aplicarImagem";
 // @ts-ignore módulos puros do motor
-import { recomendarParaSlide, FILTROS, CRITERIOS } from "../../../src/universalidade/recomendar.js";
+import { recomendarParaSlide, FILTROS, CRITERIOS, NIVEL_FAMILIARIDADE, NIVEL_DISTRACAO } from "../../../src/universalidade/recomendar.js";
 
 type Alterar = (fn: (c: Carrossel) => Carrossel, grupo?: string) => void;
 const TOM: Record<string, string> = { propria: "ok", condicionado: "alerta", referencia: "neutro" };
@@ -139,7 +139,7 @@ export function PainelReferencias({ carrossel: c, indice, alterar }: { carrossel
                 <span className={`selo selo--${TOM[r.statusImagem.estado]}`}>{r.statusImagem.rotulo}</span>
               </div>
               <p className="univ-conexao">{r.conexao}</p>
-              <p className="dica">Cobre: {r.conceitosCobertos.join(", ")} · familiaridade {r.familiaridade} (hipótese) · distração {r.distracao}</p>
+              <p className="dica">Cobre: {r.conceitosCobertos.join(", ")} · familiaridade {(NIVEL_FAMILIARIDADE as any)[r.familiaridade]} (hipótese) · distração {(NIVEL_DISTRACAO as any)[r.distracao]}</p>
               {r.verificar && <p className="dica dica--erro">⚠ Verificar antes de citar: {r.verificar}</p>}
               {r.imagem?.nota && <p className="dica">{r.imagem.nota}</p>}
               <details><summary>Pontuação</summary><ul>{Object.entries(r.pontuacao.partes).map(([k, v]) => <li key={k}>{NOMES_PARTES[k] || k}: {Number(v) > 0 ? "+" : ""}{String(v)}</li>)}</ul></details>
