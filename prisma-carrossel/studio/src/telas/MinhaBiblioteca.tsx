@@ -204,11 +204,11 @@ function DetalheImagem({ im, albuns, onMudou, onFechar }: { im: ImagemBiblioteca
         <b>Detalhes</b>
         <button className="botao botao--icone" aria-label="Fechar" onClick={onFechar}>×</button>
       </div>
-      <div className="mb-foco" title="Clique no ponto mais importante da foto (rosto, objeto). Os recortes vão preservá-lo."
+      <div className="mb-foco-moldura"><div className="mb-foco" title="Clique no ponto mais importante da foto (rosto, objeto). Os recortes vão preservá-lo."
         onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); void salvar({ foco: { x: Math.round(((e.clientX - r.left) / r.width) * 100), y: Math.round(((e.clientY - r.top) / r.height) * 100) } }, "Ponto de interesse definido."); }}>
         <img src={apiUniv.urlImagem(im.id, im.atualizadaEm)} alt={im.descricao || im.nome} />
         <i className="mb-foco-ponto" style={{ left: `${im.foco.x}%`, top: `${im.foco.y}%` }} />
-      </div>
+      </div></div>
       <p className="dica">Clique na foto para marcar o ponto de interesse (ex.: seu rosto). Ele é usado como centro do recorte nos slides. {im.largura}×{im.altura} px · {(im.bytes / 1024 / 1024).toFixed(1)} MB</p>
 
       <section className="secao">

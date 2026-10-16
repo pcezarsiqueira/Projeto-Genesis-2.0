@@ -81,7 +81,7 @@ const FONTES = `http://127.0.0.1:${PORTA_FONTES}`;
 let pngFonte = null;
 const { createServer } = await import("node:http");
 const servidorFontes = createServer((req, res) => {
-  const u = new URL(req.url, FONTES);
+  const u = new globalThis.URL(req.url, FONTES);
   if (u.pathname === "/original.png" || u.pathname === "/thumb.png") { res.writeHead(200, { "Content-Type": "image/png" }); return res.end(pngFonte); }
   if (u.pathname === "/w/api.php") {
     const info = (titulo, licenca) => ({
@@ -105,6 +105,9 @@ const servidorFontes = createServer((req, res) => {
 await new Promise((r) => servidorFontes.listen(PORTA_FONTES, "127.0.0.1", r));
 
 let servidor = null;
+// se o teste quebrar no meio, não deixa servidor órfão ocupando a porta
+process.on("exit", () => { try { servidor?.kill("SIGKILL"); } catch {} });
+process.on("uncaughtException", (e) => { console.error("Erro inesperado no teste:", e); process.exit(1); });
 async function subirServidor() {
   // nunca testar contra uma instância que já estava rodando (dados de outra execução)
   const ocupada = await fetch(`${URL}/api/saude`).then(() => true, () => false);
