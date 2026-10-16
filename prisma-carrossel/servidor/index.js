@@ -16,6 +16,14 @@ import {
 import { exportar, exportacaoValida, exportando, navegadorEmUso, fecharNavegador } from "./exportador.js";
 import { identificarImagem, TAMANHO_MAXIMO, NOME_FOTO, MIME_POR_EXT } from "./imagens.js";
 import { DESTINOS } from "../src/destinos.js";
+import {
+  lerBiblioteca, obterImagem, adicionarImagem, atualizarImagem, substituirArquivo, removerImagem,
+  criarAlbum, removerAlbum, registrarUso, arquivoDaImagem, creditoDe, TIPOS,
+} from "./biblioteca.js";
+import { buscar, baixarResultado, descreverConectores, urlManual } from "./conectores/index.js";
+import { lerConfig, salvarConfig, publico } from "./integracoes.js";
+import { statusIA } from "./ia.js";
+import { relatorioUniversalidade, FILTROS, CRITERIOS } from "../src/universalidade/recomendar.js";
 
 const HOST = "127.0.0.1";
 const PORTA_INICIAL = Number(process.env.PRISMA_PORTA) || 4317;
@@ -122,6 +130,121 @@ api.get("/projetos/:id/exportacao", (req, res) => {
   res.json({ estado: estadoExportacao(req.params.id), valida: exportacaoValida(req.params.id), exportando: exportando(req.params.id) });
 });
 
+
+/* ---------- Minha Biblioteca ---------- */
+api.get("/biblioteca", (req, res) => res.json(lerBiblioteca()));
+
+const lerUpload = express.raw({ type: () => true, limit: TAMANHO_MAXIMO });
+function validarImagemEnviada(buf) {
+  if (!Buffer.isBuffer(buf) || !buf.length) throw new ErroUsuario("Nenhum arquivo recebido.");
+  const info = identificarImagem(buf);
+  if (!info) throw new ErroUsuario("Formato não aceito. Envie JPG, PNG ou WebP.", 415);
+  if (info.largura && (info.largura < 400 || info.altura < 400)) throw new ErroUsuario(`Imagem muito pequena (${info.largura}×${info.altura}). Use pelo menos 400 px no menor lado.`, 422);
+  return info;
+}
+const cabecalho = (req, k) => { try { return decodeURIComponent(String(req.headers[k] || "")); } catch { return ""; } };
+
+api.post("/biblioteca/imagens", lerUpload, (req, res) => {
+  const info = validarImagemEnviada(req.body);
+  const tipo = cabecalho(req, "x-tipo") || "pessoal";
+  if (!TIPOS.includes(tipo)) throw new ErroUsuario("Tipo inválido.");
+  const im = adicionarImagem({
+    buf: req.body, info, tipo,
+    nome: cabecalho(req, "x-nome").replace(/\.[a-z0-9]+$/i, ""),
+    albuns: cabecalho(req, "x-albuns").split(",").filter(Boolean),
+  });
+  res.status(201).json({ imagem: im, aviso: info.largura && info.largura < 1080 ? `Resolução baixa (${info.largura} px de largura): pode perder nitidez em tela cheia.` : null });
+});
+api.patch("/biblioteca/imagens/:id", (req, res) => { obterImagem(req.params.id); res.json(atualizarImagem(req.params.id, req.body || {})); });
+api.put("/biblioteca/imagens/:id/arquivo", lerUpload, (req, res) => {
+  obterImagem(req.params.id);
+  if (req.query.confirmar !== "sim") throw new ErroUsuario("Confirmação necessária para substituir.");
+  res.json(substituirArquivo(req.params.id, req.body, validarImagemEnviada(req.body)));
+});
+api.delete("/biblioteca/imagens/:id", (req, res) => {
+  obterImagem(req.params.id);
+  if (req.query.confirmar !== "sim") throw new ErroUsuario("Confirmação necessária para remover.");
+  res.json(removerImagem(req.params.id));
+});
+api.get("/biblioteca/imagens/:id/arquivo", (req, res) => {
+  const im = obterImagem(req.params.id);
+  const arq = arquivoDaImagem(im);
+  if (!fs.existsSync(arq)) throw new ErroUsuario("Arquivo não encontrado.", 404);
+  res.type(MIME_POR_EXT[path.extname(arq).slice(1)] || "application/octet-stream").sendFile(arq);
+});
+api.post("/biblioteca/albuns", (req, res) => res.status(201).json(criarAlbum(req.body?.nome)));
+api.delete("/biblioteca/albuns/:id", (req, res) => res.json(removerAlbum(String(req.params.id))));
+
+/* ---------- busca externa (conectores reais; nada simulado) ---------- */
+api.get("/fontes", (req, res) => res.json(descreverConectores(lerConfig())));
+api.get("/fontes/:fonte/buscar", assincrono(async (req, res) => {
+  const termo = String(req.query.q || "");
+  try {
+    res.json({ resultados: await buscar(req.params.fonte, termo, lerConfig()), urlManual: urlManual(req.params.fonte, termo) });
+  } catch (e) {
+    e.extra = { urlManual: urlManual(req.params.fonte, termo) };
+    throw e;
+  }
+}));
+api.post("/biblioteca/importar", assincrono(async (req, res) => {
+  const { resultadoId, albuns = [] } = req.body || {};
+  const { buf, meta } = await baixarResultado(resultadoId, lerConfig());
+  const info = identificarImagem(buf);
+  if (!info) throw new ErroUsuario("O arquivo recebido da fonte não é uma imagem JPG, PNG ou WebP.", 415);
+  const origem = {
+    fonte: meta.fonte, titulo: meta.titulo, autor: meta.autor, licenca: meta.licenca, licencaUrl: meta.licencaUrl,
+    urlOriginal: meta.urlOriginal, urlArquivo: meta.urlArquivo, obrigacoes: meta.obrigacoes,
+    atribuicaoPronta: meta.atribuicaoPronta || null, termo: meta.termo, consultadoEm: meta.consultadoEm,
+    resolucao: `${info.largura}×${info.altura}`,
+  };
+  const im = adicionarImagem({ buf, info, tipo: "licenciada", nome: meta.titulo, albuns, origem, descricao: "" });
+  res.status(201).json({ imagem: im });
+}));
+
+/* ---------- integrações e IA ---------- */
+api.get("/integracoes", (req, res) => {
+  const cfg = lerConfig();
+  res.json({ chaves: publico(cfg), fontes: descreverConectores(cfg), ia: statusIA(cfg) });
+});
+api.put("/integracoes", (req, res) => {
+  const cfg = salvarConfig(req.body || {});
+  res.json({ chaves: publico(cfg), fontes: descreverConectores(cfg), ia: statusIA(cfg) });
+});
+
+/* ---------- aplicar imagem da biblioteca num slide ---------- */
+// Só imagens aprovadas entram na arte. O arquivo é copiado para o projeto,
+// então trocar ou remover da biblioteca não altera artes já feitas.
+api.post("/projetos/:id/aplicar-imagem", (req, res) => {
+  lerProjeto(req.params.id);
+  const im = obterImagem(req.body?.imagemId);
+  if (im.tipo === "inspiracao" || im.status !== "aprovado") {
+    throw new ErroUsuario(im.tipo === "inspiracao"
+      ? "Esta imagem está marcada como referência de inspiração e não pode entrar na publicação."
+      : "Esta imagem ainda não está aprovada para exportação. Confira a licença na Minha Biblioteca e confirme as condições ou registre a autorização.", 422);
+  }
+  const ext = path.extname(im.arquivo).slice(1);
+  const arquivo = `foto-lib-${im.id}.${ext}`;
+  const destino = dentroDe(dirFotos(req.params.id), arquivo);
+  fs.mkdirSync(path.dirname(destino), { recursive: true });
+  if (!fs.existsSync(destino)) fs.copyFileSync(arquivoDaImagem(im), destino);
+  registrarUso(im.id, req.params.id);
+  res.json({
+    arquivo, largura: im.largura, altura: im.altura, foco: im.foco, zoom: im.zoom || 1, descricao: im.descricao || im.nome,
+    origem: {
+      bibliotecaId: im.id, nome: im.nome, tipo: im.tipo, status: im.status,
+      credito: im.origem?.atribuicaoPronta || creditoDe(im), fonte: im.origem?.fonte || null,
+      urlOriginal: im.origem?.urlOriginal || null, licenca: im.origem?.licenca || null, licencaUrl: im.origem?.licencaUrl || null,
+      obrigacoes: im.origem?.obrigacoes || [], autorizacao: im.autorizacao?.descricao || null,
+    },
+  });
+});
+
+/* ---------- relatório de universalidade ---------- */
+api.get("/projetos/:id/universalidade", (req, res) => {
+  const c = lerProjeto(req.params.id);
+  res.json({ slides: relatorioUniversalidade(c, { imagens: lerBiblioteca().imagens }), filtros: FILTROS, criterios: CRITERIOS, ia: statusIA(lerConfig()) });
+});
+
 app.use("/api", api);
 
 /* ---------- downloads (bytes reais, com Content-Disposition) ---------- */
@@ -194,6 +317,7 @@ dl.get("/:id/zip", assincrono(async (req, res) => {
     [path.join(dir, "previa.html"), "previa.html"],
     [path.join(dir, "relatorio-validacao.md"), "relatorio-validacao.md"],
     [path.join(dir, "relatorio-validacao.json"), "relatorio-validacao.json"],
+    [path.join(dir, "creditos.txt"), "creditos.txt"],
     [path.join(dirProjeto(req.params.id), "carrossel.json"), "projeto/carrossel.json"],
     ...(fs.existsSync(fotos) ? fs.readdirSync(fotos).map((f) => [path.join(fotos, f), `projeto/fotos/${f}`]) : []),
   ];
@@ -207,7 +331,31 @@ dl.get("/:id/destino/:destino", assincrono(async (req, res) => {
   if (d.entrega === "pdf") return enviarArquivo(res, path.join(dir, "carrossel-completo.pdf"), `${base}.pdf`, "application/pdf");
   enviarZip(res, `${base}.zip`, pngs(c, dir));
 }));
+dl.get("/:id/universalidade", (req, res) => {
+  const c = lerProjeto(req.params.id);
+  const corpo = Buffer.from(markdownUniversalidade(c, relatorioUniversalidade(c, { imagens: lerBiblioteca().imagens })));
+  res.setHeader("Content-Type", "text/markdown; charset=utf-8");
+  res.setHeader("Content-Disposition", disposicao(`${nomeBase(c)}-universalidade.md`));
+  res.end(corpo);
+});
 app.use("/download", dl);
+
+function markdownUniversalidade(c, rel) {
+  const L = [`# Universalidade visual — ${c.titulo}`, "", "Gerado pelo PRISMA Studio com o repertório curado e regras locais (sem IA). Pontuações são estimativas editoriais de 0 a 100, não previsões de alcance; familiaridade é hipótese, sem dados de audiência.", ""];
+  for (const s of rel) {
+    L.push(`## Slide ${s.slide} · ${s.titulo}`, "", `- **Função:** ${s.funcao}`, `- **Conceito central:** ${s.conceitoCentral}`, `- **Reação pretendida:** ${s.emocao}`, `- **Layout recomendado:** ${s.layout}`, `- **Apenas tipografia:** ${s.tipografia.pontuacao}/100. ${s.tipografia.justificativa}`, "");
+    for (const r of s.referencias) {
+      L.push(`### ${r.pontuacao.total}/100 · ${r.nome}${r.ficha ? ` (${r.ficha})` : ""}`, `${r.rotuloTipo}. ${r.conexao}`, "",
+        `Familiaridade estimada: ${r.familiaridade} (hipótese) · força metafórica ${r.metafora}/3 · risco de distração ${r.distracao} · imagem: ${r.statusImagem.rotulo}.`);
+      if (r.imagem?.nota) L.push(`Imagem: ${r.imagem.nota}`);
+      if (r.verificar) L.push(`⚠ Verificar: ${r.verificar}`);
+      L.push("");
+    }
+    if (s.fotosSugeridas.length) L.push("**Da sua biblioteca:** " + s.fotosSugeridas.map((f) => `${f.imagem.nome} (${f.motivos.join("; ")})`).join(" · "), "");
+  }
+  L.push("## Critérios da pontuação", "", ...CRITERIOS.map((x) => `- ${x}`), "");
+  return L.join("\n");
+}
 
 /* ---------- interface ---------- */
 if (fs.existsSync(DIST)) {

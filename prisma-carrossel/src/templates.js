@@ -64,14 +64,18 @@ T.capa = (s, ctx) => {
 };
 
 /* PERGUNTA / PROVOCAÇÃO ---------------------------------------------------- */
-T.pergunta = (s) => `
+// Foto "detalhe": ocupa o espaço do gráfico, sem mexer no título.
+const detalhe = (s, ctx, classe) => (modoFoto(s, "detalhe") === "detalhe" ? fotoHtml(s.foto, ctx, `foto-detalhe ${classe}`) : "");
+
+T.pergunta = (s, ctx) => `
   <div class="conteudo pergunta">
     <h1 class="titulo pergunta-titulo" data-box="titulo" ${fit(128, 76, 700)}>${md(txt(s.titulo))}</h1>
     <div class="pergunta-base">
       <hr class="fio" data-box="fio">
-      <div class="pergunta-linha${s.grafico ? "" : " pergunta-linha--so-texto"}">
+      <div class="pergunta-linha${s.grafico || detalhe(s, ctx, "") ? "" : " pergunta-linha--so-texto"}">
         <p class="complemento pergunta-complemento" data-box="complemento">${md(txt(s.complemento))}</p>
-        ${s.grafico ? `<div class="pergunta-grafico" data-box="grafico">${grafico(s.grafico, s)}</div>` : ""}
+        ${detalhe(s, ctx, "") ? `<div class="pergunta-grafico pergunta-foto" data-box="grafico">${detalhe(s, ctx, "foto-detalhe--pergunta")}</div>`
+          : s.grafico ? `<div class="pergunta-grafico" data-box="grafico">${grafico(s.grafico, s)}</div>` : ""}
       </div>
     </div>
   </div>`;
@@ -85,7 +89,8 @@ T.sinal = (s, ctx) => {
   const v = s.variante || (s.cta ? "c" : Number(s.numero) % 2 ? "a" : "b");
   const num = esc(s.numero ?? "");
   const rot = `<span class="rotulo sinal-rotulo">${esc(ctx.rotuloLista)} ${num} de ${ctx.totalSinais}</span>`;
-  const graf = s.grafico ? grafico(s.grafico, s) : "";
+  const foto = detalhe(s, ctx, `foto-detalhe--sinal-${v}`);
+  const graf = foto || (s.grafico ? grafico(s.grafico, s) : "");
   if (v === "a") {
     return `
   <div class="conteudo sinal sinal--a">

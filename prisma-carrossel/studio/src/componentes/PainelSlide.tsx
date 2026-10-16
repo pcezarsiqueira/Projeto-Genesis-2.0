@@ -5,6 +5,8 @@ import type { Carrossel, Slide } from "../tipos";
 import { api, type Foto } from "../api";
 import { urlFoto } from "../motor";
 import { useAvisos } from "./Avisos";
+import { SeletorImagem } from "./SeletorImagem";
+import { aplicarImagem, avisoResolucao } from "./aplicarImagem";
 // @ts-ignore
 import { MODELOS, MODOS_FOTO, FUNDOS_ROTULOS, modeloDoSlide, trocarModelo, obterCampo, definirCampo } from "../../../src/catalogo.js";
 
@@ -70,7 +72,7 @@ export function PainelSlide({ carrossel: c, indice, alterar }: { carrossel: Carr
         ) : null}
       </section>
 
-      <SecaoFoto carrossel={c} slide={s} modos={modelo.fotos || []} setSlide={setSlide} />
+      <SecaoFoto carrossel={c} slide={s} indice={indice} alterar={alterar} modos={modelo.fotos || []} setSlide={setSlide} />
     </div>
   );
 }
@@ -183,10 +185,11 @@ function Deslizante({ rotulo, min, max, passo, valor, sufixo, onMudar, dica }: {
 }
 
 /* ---------- fotografia ---------- */
-function SecaoFoto({ carrossel: c, slide: s, modos, setSlide }: { carrossel: Carrossel; slide: Slide; modos: string[]; setSlide: (fn: (s: Slide) => Slide, grupo?: string) => void }) {
+function SecaoFoto({ carrossel: c, slide: s, indice, alterar, modos, setSlide }: { carrossel: Carrossel; slide: Slide; indice: number; alterar: Alterar; modos: string[]; setSlide: (fn: (s: Slide) => Slide, grupo?: string) => void }) {
   const [fotos, setFotos] = useState<Foto[]>([]);
   const [enviando, setEnviando] = useState(false);
-  const { avisar } = useAvisos();
+  const [seletor, setSeletor] = useState(false);
+  const { avisar, confirmar } = useAvisos();
   const entrada = useRef<HTMLInputElement>(null);
   useEffect(() => { api.fotos(c.id).then(setFotos).catch(() => {}); }, [c.id]);
 
@@ -194,7 +197,9 @@ function SecaoFoto({ carrossel: c, slide: s, modos, setSlide }: { carrossel: Car
     return (
       <section className="secao">
         <h3>Fotografia</h3>
-        <p className="dica">Este modelo é exclusivamente tipográfico. Fotos estão disponíveis em: Capa de impacto (acima do título ou de fundo), Explicação (lateral) e Encerramento (retrato na assinatura).</p>
+        <p className="dica">Este modelo é exclusivamente tipográfico. Fotos estão disponíveis em: Capa de impacto, Provocação, Lista numerada (foto de detalhe), Explicação (lateral) e Encerramento (retrato na assinatura).</p>
+        <button className="botao botao--pequeno" onClick={() => setSeletor(true)}>Usar foto da biblioteca (oferece trocar o modelo)…</button>
+        {seletor && <SeletorImagem onFechar={() => setSeletor(false)} onEscolher={(im) => { setSeletor(false); void aplicarImagem({ carrossel: c, indice, imagem: im, alterar, confirmar, avisar }); }} />}
       </section>
     );
   }
@@ -225,7 +230,11 @@ function SecaoFoto({ carrossel: c, slide: s, modos, setSlide }: { carrossel: Car
         ))}
       </div>
       <input ref={entrada} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => enviar(e.target.files?.[0])} data-testid="enviar-foto" />
-      <button className="botao botao--pequeno" disabled={enviando} onClick={() => entrada.current?.click()}>{enviando ? "Enviando…" : "Enviar foto (JPG, PNG, WebP)"}</button>
+      <div className="linha-botoes">
+        <button className="botao botao--pequeno" onClick={() => setSeletor(true)}>Usar da Minha Biblioteca…</button>
+        <button className="botao botao--pequeno" disabled={enviando} onClick={() => entrada.current?.click()}>{enviando ? "Enviando…" : "Enviar foto só para este projeto"}</button>
+      </div>
+      {seletor && <SeletorImagem onFechar={() => setSeletor(false)} onEscolher={(im) => { setSeletor(false); void aplicarImagem({ carrossel: c, indice, imagem: im, alterar, confirmar, avisar }).then(() => api.fotos(c.id).then(setFotos).catch(() => {})); }} />}
       {fotos.length > 0 && (
         <div className="galeria" role="listbox" aria-label="Fotos do projeto">
           {fotos.map((x) => (
@@ -239,6 +248,13 @@ function SecaoFoto({ carrossel: c, slide: s, modos, setSlide }: { carrossel: Car
       {f?.arquivo && (
         <>
           <p className="dica">Recorte e posição não alteram a foto: só escolhem a parte visível. Rosto, pele e cenário ficam como no original.</p>
+          {(() => { const info = fotos.find((x) => x.arquivo === f.arquivo); const av = info ? avisoResolucao(s, f.modo || modos[0], info.largura, f.zoom ?? 1) : null; return av ? <p className="dica dica--erro" data-testid="aviso-resolucao">{av}</p> : null; })()}
+          {f.origem?.credito && (
+            <div className="credito-config">
+              <p className="dica"><b>Origem:</b> {f.origem.credito}{f.origem.licenca ? "" : ""}</p>
+              <label className="mb-aceite"><input type="checkbox" checked={f.creditoNaArte !== false} onChange={(e) => setFoto({ creditoNaArte: e.target.checked })} /> Mostrar o crédito na arte (sempre incluído em creditos.txt)</label>
+            </div>
+          )}
           <Deslizante rotulo="Posição horizontal" min={0} max={100} passo={1} valor={Math.round(f.x ?? 50)} sufixo="%" onMudar={(v) => setFoto({ x: v }, "foto-x")} />
           <Deslizante rotulo="Posição vertical" min={0} max={100} passo={1} valor={Math.round(f.y ?? 50)} sufixo="%" onMudar={(v) => setFoto({ y: v }, "foto-y")} />
           <Deslizante rotulo="Aproximação" min={100} max={250} passo={5} valor={Math.round((f.zoom ?? 1) * 100)} sufixo="%" onMudar={(v) => setFoto({ zoom: v / 100 }, "foto-z")} />

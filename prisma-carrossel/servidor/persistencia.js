@@ -69,6 +69,8 @@ function idLivre(base) {
 // Hash do conteúdo que influencia a arte (ignora metadados do Studio).
 export function hashConteudo(c) {
   const { studio, id, ...resto } = c;
+  // escolhas de referência (universalidade) não mudam a arte
+  resto.slides = (resto.slides || []).map(({ universalidade, ...sl }) => sl);
   return crypto.createHash("sha256").update(VERSAO_MOTOR + JSON.stringify(resto)).digest("hex").slice(0, 16);
 }
 

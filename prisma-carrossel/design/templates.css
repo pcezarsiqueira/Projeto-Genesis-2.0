@@ -258,3 +258,21 @@
 .alinhar-centro .cta { justify-content: center; }
 .alinhar-centro .explicacao-corpo { border-left: 0; padding-left: 0; align-items: center; }
 .alinhar-centro .explicacao-corpo::before { content: ""; width: 96px; height: 6px; background: var(--f-acento); }
+
+/* ==========================================================================
+   v2.1 — Universalidade visual: foto de detalhe e crédito
+   ========================================================================== */
+.foto-detalhe { border-radius: var(--raio); }
+.pergunta-foto { width: 300px; height: 330px; }
+.foto-detalhe--pergunta { width: 300px; height: 330px; }
+.foto-detalhe--sinal-a { width: 480px; height: 300px; }
+.foto-detalhe--sinal-b { width: 440px; height: 300px; }
+.foto-detalhe--sinal-c { width: 888px; height: 330px; }
+.credito-foto {
+  position: absolute; left: var(--margem-x); bottom: 40px; max-width: 760px; z-index: 3;
+  font-family: var(--fonte-texto); font-size: 22px; font-weight: 500; line-height: 1.2;
+}
+.credito-foto span {
+  display: inline-block; background: rgba(29, 30, 33, 0.82); color: var(--cor-branco-quente);
+  padding: 6px 10px; border-radius: 4px;
+}

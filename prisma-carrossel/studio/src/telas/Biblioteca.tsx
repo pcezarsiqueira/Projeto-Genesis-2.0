@@ -6,6 +6,7 @@ import { useAvisos } from "../componentes/Avisos";
 import { useDownload } from "../componentes/useDownload";
 import { NovoCarrossel } from "./NovoCarrossel";
 import { irPara } from "../App";
+import { NavPrincipal } from "../componentes/NavPrincipal";
 
 const STATUS: Record<string, [string, string]> = {
   rascunho: ["Rascunho", "neutro"],
@@ -60,6 +61,7 @@ export function Biblioteca() {
     <div className="pagina">
       <header className="barra-topo">
         <Marca />
+        <NavPrincipal ativa="carrosseis" />
         <div className="barra-topo-acoes">
           <button className="botao botao--primario" onClick={() => setNovo(true)}>+ Criar carrossel</button>
         </div>

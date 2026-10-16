@@ -9,6 +9,7 @@ import { PainelSlides } from "../componentes/PainelSlides";
 import { PainelSlide } from "../componentes/PainelSlide";
 import { PainelCarrossel } from "../componentes/PainelCarrossel";
 import { PainelExportar } from "../componentes/PainelExportar";
+import { PainelReferencias } from "../componentes/PainelReferencias";
 import { useAvisos } from "../componentes/Avisos";
 import { Marca } from "./Biblioteca";
 // @ts-ignore
@@ -34,7 +35,7 @@ export function Editor({ id }: { id: string }) {
 }
 
 type Modo = "slide" | "mosaico";
-type Aba = "slide" | "carrossel" | "exportar";
+type Aba = "slide" | "referencias" | "carrossel" | "exportar";
 
 function EditorCarregado({ inicial }: { inicial: Carrossel }) {
   const p = useProjeto(inicial);
@@ -100,7 +101,7 @@ function EditorCarregado({ inicial }: { inicial: Carrossel }) {
 
       <div className="editor-corpo">
         <PainelSlides
-          carrossel={c} selecionado={indice} onSelecionar={(i) => { setSel(i); setModo("slide"); setAba("slide"); }}
+          carrossel={c} selecionado={indice} onSelecionar={(i) => { setSel(i); setModo("slide"); setAba((a) => (a === "referencias" ? a : "slide")); }}
           alterar={alterar}
         />
 
@@ -142,12 +143,13 @@ function EditorCarregado({ inicial }: { inicial: Carrossel }) {
 
         <aside className="editor-direita" aria-label="Propriedades">
           <div className="abas abas--painel" role="tablist">
-            {([["slide", "Slide"], ["carrossel", "Carrossel"], ["exportar", "Exportar"]] as [Aba, string][]).map(([v, r]) => (
+            {([["slide", "Slide"], ["referencias", "Referências"], ["carrossel", "Carrossel"], ["exportar", "Exportar"]] as [Aba, string][]).map(([v, r]) => (
               <button key={v} role="tab" aria-selected={aba === v} className={`aba${aba === v ? " aba--ativa" : ""}`} onClick={() => setAba(v)}>{r}</button>
             ))}
           </div>
           <div className="painel-rolagem">
             {aba === "slide" && c.slides[indice] && <PainelSlide carrossel={c} indice={indice} alterar={alterar} />}
+            {aba === "referencias" && c.slides[indice] && <PainelReferencias key={indice} carrossel={c} indice={indice} alterar={alterar} />}
             {aba === "carrossel" && <PainelCarrossel carrossel={c} alterar={alterar} />}
             {aba === "exportar" && <PainelExportar carrossel={c} indice={indice} salvarAgora={p.salvarAgora} estadoSalvamento={p.estado} />}
           </div>

@@ -40,7 +40,7 @@ export const MODELOS = [
     descricao: "Pergunta que faz o leitor se reconhecer.",
     campos: [titulo(80), { chave: "complemento", rotulo: "Complemento", tipo: "longo", max: 90 },
       { chave: "grafico", rotulo: "Gráfico", tipo: "opcoes", opcoes: GRAFICOS }],
-    alinhamento: true,
+    fotos: ["detalhe"], alinhamento: true,
     padrao: { fundo: "claro", titulo: "UMA PERGUNTA QUE *INCOMODA?*", complemento: "Uma frase curta que aprofunda a pergunta.", grafico: "" },
   },
   {
@@ -61,6 +61,7 @@ export const MODELOS = [
         { valor: "", rotulo: "Automática" }, { valor: "a", rotulo: "A · número no topo" },
         { valor: "b", rotulo: "B · número embaixo" }, { valor: "c", rotulo: "C · gráfico largo + CTA" }] },
       { chave: "cta.texto", rotulo: "CTA na base (só composição C)", tipo: "curto", max: 70 }],
+    fotos: ["detalhe"],
     padrao: { fundo: "escuro", numero: "1", titulo: "PRIMEIRO *ITEM.*", texto: "Uma frase que explica o item.", grafico: "", variante: "" },
   },
   {
@@ -137,6 +138,7 @@ export const MODOS_FOTO = {
   fundo: "Foto de fundo com texto em painel seguro",
   lateral: "Foto lateral",
   retrato: "Retrato na assinatura",
+  detalhe: "Foto de detalhe (no lugar do gráfico)",
 };
 
 export const FUNDOS_ROTULOS = { escuro: "Grafite", claro: "Branco quente", suave: "Cinza suave", acento: "Dourado" };

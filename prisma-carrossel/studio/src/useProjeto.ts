@@ -74,13 +74,31 @@ export function useProjeto(inicial: Carrossel) {
   const estadoRef = useRef(estado);
   estadoRef.current = estado;
 
-  // aviso ao fechar a aba com alterações não salvas
+  // Ao fechar a aba, recarregar ou sair do editor com algo pendente, envia
+  // a gravação na hora (keepalive: a requisição sobrevive ao fechamento).
   useEffect(() => {
+    const enviarPendente = () => {
+      const c = atual.current;
+      const texto = JSON.stringify(c);
+      if (texto === salvoJson.current) return;
+      salvoJson.current = texto;
+      try {
+        void fetch(`/api/projetos/${c.id}`, {
+          method: "PUT", keepalive: true, headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dados: c, revisao: revisao.current }),
+        });
+      } catch { /* sem conexão: o aviso do navegador já protegeu o usuário */ }
+    };
     const aviso = (ev: BeforeUnloadEvent) => {
       if (JSON.stringify(atual.current) !== salvoJson.current) { ev.preventDefault(); ev.returnValue = ""; }
     };
     window.addEventListener("beforeunload", aviso);
-    return () => window.removeEventListener("beforeunload", aviso);
+    window.addEventListener("pagehide", enviarPendente);
+    return () => {
+      window.removeEventListener("beforeunload", aviso);
+      window.removeEventListener("pagehide", enviarPendente);
+      enviarPendente(); // saiu do editor pela navegação interna
+    };
   }, []);
 
   return {

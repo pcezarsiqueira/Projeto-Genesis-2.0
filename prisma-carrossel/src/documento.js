@@ -38,6 +38,13 @@ export function contexto(carrossel, opcoes = {}) {
 
 const limitar = (v, a, b) => Math.min(b, Math.max(a, Number(v) || 1));
 
+// Crédito exigido pela licença da foto, impresso na arte (opcional por slide).
+function creditoFoto(slide) {
+  const f = slide.foto;
+  if (!f?.arquivo || !f.origem?.credito || f.creditoNaArte === false) return "";
+  return `\n  <div class="credito-foto" data-box="credito" data-zona="meta"><span>${esc(f.origem.credito)}</span></div>`;
+}
+
 export function renderSlide(slide, i, ctx) {
   const id = `slide-${pad2(i + 1)}`;
   const corpo = templates[slide.template](slide, ctx);
@@ -50,7 +57,7 @@ export function renderSlide(slide, i, ctx) {
   <header class="meta" data-box="meta" data-zona="meta">
     <span class="perfil">${esc(ctx.perfil)}</span>
     <span class="pag"><b>${pad2(i + 1)}</b> / ${pad2(ctx.total)}</span>
-  </header>${corpo}
+  </header>${corpo}${creditoFoto(slide)}
 </section>`;
 }
 

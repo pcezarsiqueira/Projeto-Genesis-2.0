@@ -72,10 +72,42 @@ async function textoPdf(buf) {
   return paginas;
 }
 
+// Servidor de TESTE que reproduz o formato documentado da API do Wikimedia
+// Commons (MediaWiki, formatversion=2). Usado só para exercitar o conector de
+// ponta a ponta neste ambiente, onde a rede externa está bloqueada. Os
+// resultados dele são marcados como "imagem de teste" e não são dados reais.
+const PORTA_FONTES = 4398;
+const FONTES = `http://127.0.0.1:${PORTA_FONTES}`;
+let pngFonte = null;
+const { createServer } = await import("node:http");
+const servidorFontes = createServer((req, res) => {
+  const u = new URL(req.url, FONTES);
+  if (u.pathname === "/original.png" || u.pathname === "/thumb.png") { res.writeHead(200, { "Content-Type": "image/png" }); return res.end(pngFonte); }
+  if (u.pathname === "/w/api.php") {
+    const info = (titulo, licenca) => ({
+      thumburl: `${FONTES}/thumb.png`, url: `${FONTES}/original.png`, descriptionurl: `${FONTES}/wiki/${encodeURIComponent(titulo)}`,
+      width: 1600, height: 1200, mime: "image/png",
+      extmetadata: {
+        ObjectName: { value: `${titulo.replace(/^File:|\.png$/g, "")} (imagem de teste)` },
+        Artist: { value: "<a href='#'>Autora de Teste</a>" },
+        ...(licenca ? { LicenseShortName: { value: licenca }, LicenseUrl: { value: "https://creativecommons.org/licenses/by-sa/4.0" }, AttributionRequired: { value: "true" } } : {}),
+      },
+    });
+    const pages = u.searchParams.get("titles")
+      ? [{ title: u.searchParams.get("titles"), imageinfo: [info(u.searchParams.get("titles"), "CC BY-SA 4.0")] }]
+      : [{ pageid: 1, title: "File:Sala de espelhos.png", imageinfo: [info("File:Sala de espelhos.png", "CC BY-SA 4.0")] },
+         { pageid: 2, title: "File:Sem licenca.png", imageinfo: [info("File:Sem licenca.png", null)] }];
+    res.writeHead(200, { "Content-Type": "application/json" });
+    return res.end(JSON.stringify({ batchcomplete: true, query: { pages } }));
+  }
+  res.writeHead(404); res.end();
+});
+await new Promise((r) => servidorFontes.listen(PORTA_FONTES, "127.0.0.1", r));
+
 let servidor = null;
 async function subirServidor() {
   servidor = spawn(process.execPath, [path.join(RAIZ, "servidor/index.js")], {
-    env: { ...process.env, PRISMA_DADOS: DADOS, PRISMA_PORTA: String(PORTA), PRISMA_ABRIR: "0" },
+    env: { ...process.env, PRISMA_DADOS: DADOS, PRISMA_PORTA: String(PORTA), PRISMA_ABRIR: "0", PRISMA_URL_COMMONS: FONTES, PRISMA_TESTE_FONTES: "1" },
     stdio: ["ignore", "pipe", "pipe"],
   });
   servidor.stdout.on("data", (d) => fs.appendFileSync(path.join(SAIDA, "servidor.log"), d));
@@ -131,6 +163,14 @@ let idCopia = "";
 
 console.log(`PRISMA Studio — testes E2E (dados temporários em ${DADOS})\n`);
 navegador = await chromium.launch();
+async function gerarImagem(arquivo, largura, altura, svg) {
+  const pg = await navegador.newPage({ viewport: { width: largura, height: altura } });
+  await pg.setContent(`<body style="margin:0"><svg width="${largura}" height="${altura}">${svg}</svg></body>`);
+  await pg.screenshot({ path: arquivo }); await pg.close();
+  return arquivo;
+}
+pngFonte = fs.readFileSync(await gerarImagem(path.join(SAIDA, "fonte-teste.png"), 1600, 1200,
+  `<rect width="1600" height="1200" fill="#c9d3dc"/>${Array.from({ length: 7 }, (_, i) => `<rect x="${120 + i * 200}" y="200" width="150" height="800" fill="#9fb0bf" stroke="#5d6f80" stroke-width="8"/>`).join("")}`));
 await subirServidor();
 await novaPagina();
 
@@ -399,9 +439,224 @@ await teste("Extra E. Downloads por destino (Instagram, TikTok, LinkedIn, Substa
   return out.join(", ");
 });
 
+
+/* ---------- Universalidade visual ---------- */
+const imgRetrato = await gerarImagem(path.join(SAIDA, "foto-teste-retrato.png"), 1200, 1600,
+  `<rect width="1200" height="1600" fill="#d8cbb4"/><rect x="380" y="300" width="440" height="900" rx="40" fill="#6d5a45"/><circle cx="600" cy="520" r="140" fill="#3e3326"/>`);
+const imgPaisagem = path.join(SAIDA, "foto-teste-paisagem.png");
+let idImgPessoal = "", idImgInspiracao = "";
+
+await teste("U1. Minha Biblioteca: upload múltiplo, álbum, etiquetas, favorito e busca", async () => {
+  await pagina.goto(`${URL}/#/biblioteca`);
+  await pagina.waitForSelector(".mb-albuns");
+  await pagina.setInputFiles('[data-testid="enviar-biblioteca"]', [imgPaisagem, imgRetrato]);
+  await pagina.waitForFunction(() => document.querySelectorAll(".mb-item").length === 2, null, { timeout: 15000 });
+  pagina.once("dialog", (d) => d.accept("Palestras de teste"));
+  await pagina.click("text=+ Novo álbum");
+  await pagina.waitForSelector('.mb-album:has-text("Palestras de teste")');
+  await pagina.click('.mb-album:has-text("Todas")'); // a interface abre o álbum novo (vazio)
+  const b = await (await fetch(`${URL}/api/biblioteca`)).json();
+  afirmar(b.imagens.length === 2 && b.imagens.every((i) => i.tipo === "pessoal" && i.status === "aprovado"), "fotos pessoais não ficaram aprovadas");
+  const retrato = b.imagens.find((i) => i.altura > i.largura);
+  idImgPessoal = retrato.id;
+  await pagina.click(`[data-imagem="${retrato.id}"] .mb-item-img`);
+  await pagina.waitForSelector('[data-testid="detalhe-imagem"]');
+  await pagina.fill('[data-testid="detalhe-imagem"] input[placeholder^="pensativo"]', "pensativo, palestra, fundo claro");
+  await pagina.fill('[data-testid="detalhe-imagem"] textarea >> nth=0', "Pessoa em pé, de frente (imagem de teste, sem rosto real)");
+  await pagina.click("text=Salvar descrição");
+  await pagina.waitForTimeout(400);
+  await pagina.click('[data-testid="detalhe-imagem"] label:has-text("Palestras de teste") input');
+  await pagina.waitForTimeout(400);
+  await pagina.click(`[data-imagem="${retrato.id}"] .mb-estrela`);
+  await pagina.waitForTimeout(400);
+  // ponto de interesse
+  const foco = pagina.locator(".mb-foco");
+  const caixa = await foco.boundingBox();
+  await pagina.mouse.click(caixa.x + caixa.width * 0.5, caixa.y + caixa.height * 0.3);
+  await pagina.waitForTimeout(400);
+  await pagina.fill('input[aria-label="Buscar na biblioteca"]', "palestra");
+  await pagina.waitForFunction(() => document.querySelectorAll(".mb-item").length === 1);
+  const b2 = await (await fetch(`${URL}/api/biblioteca`)).json();
+  const r2 = b2.imagens.find((i) => i.id === retrato.id);
+  afirmar(r2.etiquetas.includes("palestra") && r2.favorita && r2.albuns.length === 1 && r2.foco.y === 30, `metadados não salvos: ${JSON.stringify({ e: r2.etiquetas, f: r2.favorita, a: r2.albuns, foco: r2.foco })}`);
+  await pagina.screenshot({ path: path.join(SAIDA, "u1-minha-biblioteca.png") });
+  // referência de inspiração (não pode entrar na arte)
+  const up = await fetch(`${URL}/api/biblioteca/imagens`, { method: "POST", headers: { "Content-Type": "image/png", "X-Tipo": "inspiracao", "X-Nome": "estilo" }, body: fs.readFileSync(imgPaisagem) });
+  idImgInspiracao = (await up.json()).imagem.id;
+  return "2 fotos enviadas de uma vez; álbum criado; etiquetas, descrição, favorito e ponto de interesse salvos; busca por etiqueta encontrou a foto";
+});
+
+await teste("U2. Biblioteca continua após reiniciar o aplicativo", async () => {
+  await contexto.close();
+  await derrubarServidor();
+  await subirServidor();
+  await novaPagina();
+  await pagina.goto(`${URL}/#/biblioteca`);
+  await pagina.waitForFunction(() => document.querySelectorAll(".mb-item").length === 3, null, { timeout: 15000 });
+  const r = await fetch(`${URL}/api/biblioteca/imagens/${idImgPessoal}/arquivo`);
+  afirmar(r.ok && sha(Buffer.from(await r.arrayBuffer())) === sha(fs.readFileSync(imgRetrato)), "arquivo não preservado");
+  return "3 imagens de volta após reinício; arquivo idêntico ao enviado";
+});
+
+await teste("U3. Referências por slide: função, conceito, ≥3 tipos de conexão e justificativa", async () => {
+  await abrirEditor(idCopia);
+  await selecionarSlide(2);
+  await pagina.click('[role="tab"]:has-text("Referências")');
+  await pagina.waitForSelector('[data-testid="painel-referencias"]');
+  const conceito = await pagina.innerText('[data-testid="conceito-central"]');
+  afirmar(/pensar por conta própria|curadoria/.test(conceito), `conceito: ${conceito}`);
+  const tipos = await pagina.locator(".univ-cartao[data-ref]:not([data-ref=tipografia]) .univ-selos .selo:first-child").allInnerTexts();
+  afirmar(new Set(tipos.map((t) => t.split(":")[0])).size >= 3, `tipos: ${tipos}`);
+  const conexoes = await pagina.locator(".univ-conexao").allInnerTexts();
+  afirmar(conexoes.length >= 3 && conexoes.every((c) => c.length > 40), "referências sem explicação");
+  afirmar(await pagina.locator('.univ-cartao[data-ref="show-de-truman"]').count() === 1, "Truman ausente no slide 2");
+  await pagina.click('[data-filtro="cinema-series"]');
+  afirmar(await pagina.locator('.univ-cartao[data-ref="show-de-truman"] >> text=Referência cultural').count() === 1, "obra protegida não marcada como referência cultural");
+  await pagina.click('.univ-filtros button:has-text("Todas")');
+  await pagina.screenshot({ path: path.join(SAIDA, "u3-referencias-slide-2.png") });
+  return `conceito “${conceito}”; ${new Set(tipos.map((t) => t.split(":")[0])).size} tipos de conexão; Truman marcado como referência cultural (sem direito de imagem)`;
+});
+
+await teste("U4. Selecionar e rejeitar referência (sem alterar a arte)", async () => {
+  await esperarSalvo();
+  await (await fetch(`${URL}/api/projetos/${idCopia}/exportar`, { method: "POST" })).json();
+  await pagina.click('.univ-cartao[data-ref="show-de-truman"] >> text=Selecionar');
+  await pagina.waitForSelector('[data-testid="referencia-escolhida"]');
+  const outra = await pagina.locator(".univ-cartao[data-ref]:not([data-ref=tipografia]):not([data-ref=show-de-truman])").first().getAttribute("data-ref");
+  await pagina.click(`.univ-cartao[data-ref="${outra}"] >> text=Rejeitar`);
+  await pagina.waitForFunction((id) => !document.querySelector(`.univ-cartao[data-ref="${id}"]`), outra);
+  await esperarSalvo();
+  const c = (await (await fetch(`${URL}/api/projetos/${idCopia}`)).json()).dados;
+  afirmar(c.slides[1].universalidade.escolhida.id === "show-de-truman" && c.slides[1].universalidade.rejeitadas.includes(outra), "escolha não salva");
+  const exp = await (await fetch(`${URL}/api/projetos/${idCopia}/exportacao`)).json();
+  afirmar(exp.valida, "escolher referência invalidou a exportação (não deveria mudar a arte)");
+  return `Truman selecionado; “${outra}” rejeitada; exportação continua válida (arte inalterada)`;
+});
+
+await teste("U5. Busca REAL na internet neste ambiente: erro honesto, sem resultados inventados", async () => {
+  await pagina.click('[data-filtro="licenciadas"]');
+  await pagina.selectOption('[data-testid="busca-externa"] select', "openverse");
+  await pagina.fill('[data-testid="busca-externa"] input[aria-label="Termo de busca"]', "hall of mirrors");
+  await pagina.click('[data-testid="busca-externa"] button:has-text("Buscar")');
+  await pagina.waitForSelector('[data-testid="erro-busca"]', { timeout: 30000 });
+  const msg = await pagina.innerText('[data-testid="erro-busca"]');
+  afirmar(/Não foi possível acessar api\.openverse\.org/.test(msg) && /pesquisa manual/i.test(msg), `mensagem: ${msg}`);
+  afirmar(await pagina.locator('[data-testid="resultados-busca"]').count() === 0, "apareceram resultados sem conexão");
+  const link = await pagina.getAttribute('[data-testid="erro-busca"] a', "href");
+  afirmar(link === "https://openverse.org/search/image?q=hall%20of%20mirrors", `link manual: ${link}`);
+  return "Openverse inacessível daqui (bloqueio de rede): mensagem real + link de pesquisa manual; nenhum resultado exibido";
+});
+
+await teste("U6. Conector Wikimedia (servidor de TESTE com o formato da API): resultados, fontes, licenças, importar e aprovar", async () => {
+  await pagina.selectOption('[data-testid="busca-externa"] select', "wikimedia");
+  await pagina.fill('[data-testid="busca-externa"] input[aria-label="Termo de busca"]', "hall of mirrors");
+  await pagina.click('[data-testid="busca-externa"] button:has-text("Buscar")');
+  await pagina.waitForSelector('[data-testid="resultados-busca"]', { timeout: 15000 });
+  const cond = pagina.locator('.resultado[data-resultado="condicionado"]');
+  const ref = pagina.locator('.resultado[data-resultado="referencia"]');
+  afirmar(await cond.count() === 1 && await ref.count() === 1, "estados de licença incorretos");
+  const txt = await cond.innerText();
+  afirmar(txt.includes("Wikimedia Commons") && txt.includes("Autora de Teste") && txt.includes("CC BY-SA 4.0") && txt.includes("1600×1200"), `metadados: ${txt}`);
+  afirmar((await ref.innerText()).includes("Só referência"), "resultado sem licença deveria ser só referência");
+  await pagina.screenshot({ path: path.join(SAIDA, "u6-busca-resultados.png") });
+  await cond.locator("text=Importar para a biblioteca").click();
+  await pagina.waitForSelector('.univ-foto[data-licenciada="condicionado"]', { timeout: 15000 });
+  const b = await (await fetch(`${URL}/api/biblioteca`)).json();
+  const lic = b.imagens.find((i) => i.tipo === "licenciada");
+  afirmar(lic.status === "condicionado" && lic.origem.autor === "Autora de Teste" && lic.origem.licenca === "CC BY-SA 4.0" && lic.origem.consultadoEm && lic.origem.urlOriginal, "metadados de origem incompletos");
+  // não pode ser inserida antes de aprovar
+  const tentativa = await fetch(`${URL}/api/projetos/${idCopia}/aplicar-imagem`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imagemId: lic.id }) });
+  afirmar(tentativa.status === 422, "imagem condicionada foi aceita no slide");
+  // aprovar na biblioteca
+  await pagina.goto(`${URL}/#/biblioteca`);
+  await pagina.click(`[data-imagem="${lic.id}"] .mb-item-img`);
+  await pagina.waitForSelector(".mb-aprovar");
+  await pagina.click(".mb-aceite input");
+  await pagina.click("text=Aprovar para exportação");
+  await pagina.waitForSelector('[data-status="aprovado"]');
+  await pagina.screenshot({ path: path.join(SAIDA, "u6-licenca-aprovada.png") });
+  return "1 resultado com licença (uso condicionado) e 1 sem licença (só referência); importada com autor/licença/URL/data; bloqueada até aprovar; aprovada após confirmar condições";
+});
+
+await teste("U7. Inserir imagens nos slides com confirmação; layout validado", async () => {
+  await abrirEditor(idCopia);
+  // slide 1: imagem licenciada aprovada
+  await selecionarSlide(1);
+  await pagina.click('[role="tab"]:has-text("Referências")');
+  await pagina.click('[data-filtro="licenciadas"]');
+  await pagina.click('.univ-foto[data-licenciada="aprovado"] >> text=Inserir no slide');
+  await pagina.waitForSelector('[role="alertdialog"]');
+  const textoConf = await pagina.innerText('[role="alertdialog"]');
+  afirmar(/Crédito exigido/.test(textoConf), "confirmação sem crédito");
+  await pagina.click('[role="alertdialog"] >> text=Inserir imagem');
+  await pagina.waitForSelector('[data-diag]');
+  await pagina.waitForTimeout(800);
+  const f1 = pagina.frameLocator(".palco-slide iframe");
+  afirmar(await f1.locator(".credito-foto").count() === 1, "crédito não aparece na arte");
+  afirmar((await f1.locator(".foto img").getAttribute("src")).includes("foto-lib-"), "imagem não inserida");
+  afirmar(await pagina.getAttribute("[data-diag]", "data-diag") === "ok", "layout com imagem licenciada não validou: " + (await pagina.innerText("[data-testid=diagnostico]")));
+  await pagina.screenshot({ path: path.join(SAIDA, "u7-slide1-imagem-licenciada.png") });
+  // slide 2: foto pessoal como foto de detalhe (via seletor)
+  await selecionarSlide(2);
+  await pagina.click('.univ-cartao[data-ref="show-de-truman"] >> text=Usar foto pessoal');
+  await pagina.waitForSelector('[data-testid="seletor-imagem"]');
+  afirmar(await pagina.locator(`[data-testid="seletor-imagem"] [data-imagem="${idImgInspiracao}"]`).isDisabled(), "inspiração deveria estar bloqueada");
+  await pagina.click(`[data-testid="seletor-imagem"] [data-imagem="${idImgPessoal}"]`);
+  await pagina.click('[role="alertdialog"] >> text=Inserir imagem');
+  await pagina.waitForTimeout(1000);
+  await pagina.waitForSelector('[data-diag]');
+  afirmar(await pagina.frameLocator(".palco-slide iframe").locator(".foto-detalhe").count() === 1, "foto de detalhe não inserida");
+  afirmar(await pagina.getAttribute("[data-diag]", "data-diag") === "ok", "slide 2 com foto não validou: " + (await pagina.innerText("[data-testid=diagnostico]")));
+  await pagina.screenshot({ path: path.join(SAIDA, "u7-slide2-foto-pessoal.png") });
+  const api422 = await fetch(`${URL}/api/projetos/${idCopia}/aplicar-imagem`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imagemId: idImgInspiracao }) });
+  afirmar(api422.status === 422, "servidor aceitou imagem de inspiração");
+  await esperarSalvo();
+  return "slide 1 com imagem licenciada + crédito na arte; slide 2 com foto pessoal como detalhe; inspiração bloqueada na interface e no servidor; validação ok";
+});
+
+await teste("U8. Renderizar e baixar o ZIP atualizado (créditos, versão anterior preservada)", async () => {
+  await pagina.click('[role="tab"]:has-text("Exportar")');
+  const { buf } = await baixarPorBotao("Baixar tudo (ZIP)");
+  const z = lerZip(buf);
+  afirmar(z["creditos.txt"] && z["creditos.txt"].toString().includes("Autora de Teste") && z["creditos.txt"].toString().includes("CC BY-SA 4.0"), "creditos.txt ausente ou incompleto");
+  afirmar((await textoPdf(z["carrossel-completo.pdf"])).length === 9, "PDF sem 9 páginas");
+  const proj = JSON.parse(z["projeto/carrossel.json"]);
+  afirmar(proj.slides[0].foto.origem.licenca === "CC BY-SA 4.0" && proj.slides[1].foto.modo === "detalhe", "metadados de origem não preservados no projeto");
+  afirmar(z[`projeto/fotos/${proj.slides[0].foto.arquivo}`], "imagem inserida não está no ZIP");
+  fs.writeFileSync(path.join(SAIDA, "u8-slide-01.png"), z["slide-01.png"]);
+  fs.writeFileSync(path.join(SAIDA, "u8-slide-02.png"), z["slide-02.png"]);
+  const ant = path.join(DADOS, "projetos", idCopia, "exportacao-anteriores");
+  afirmar(fs.existsSync(ant) && fs.readdirSync(ant).length >= 1, "versão anterior da exportação não foi preservada");
+  const est = await (await fetch(`${URL}/api/projetos/${idCopia}/exportacao`)).json();
+  afirmar(est.estado.totalErros === 0, `exportação com erros: ${JSON.stringify(est.estado.errosArquivos)}`);
+  return `ZIP com ${Object.keys(z).length} arquivos, creditos.txt, origem das imagens no projeto; ${fs.readdirSync(ant).length} versão(ões) anterior(es) guardada(s); 0 erros`;
+});
+
+await teste("U9. Revogar a aprovação bloqueia a exportação", async () => {
+  const b = await (await fetch(`${URL}/api/biblioteca`)).json();
+  const lic = b.imagens.find((i) => i.tipo === "licenciada");
+  await fetch(`${URL}/api/biblioteca/imagens/${lic.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirmarCondicoes: false }) });
+  const r = await (await fetch(`${URL}/api/projetos/${idCopia}/exportar`, { method: "POST" })).json();
+  afirmar(r.estado.totalErros > 0 && r.estado.errosArquivos.some((e) => /não está aprovada/.test(e)), "exportação não acusou imagem revogada");
+  await fetch(`${URL}/api/biblioteca/imagens/${lic.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirmarCondicoes: true }) });
+  return "imagem revogada → exportação marca erro de direitos";
+});
+
+await teste("U10. Relatório de universalidade dos 9 slides", async () => {
+  const r = await fetch(`${URL}/download/${ID}/universalidade`);
+  const md = await r.text();
+  afirmar(r.headers.get("content-disposition").includes("universalidade.md"), "sem Content-Disposition");
+  const secoes = md.match(/^## Slide \d/gm) || [];
+  afirmar(secoes.length === 9, `${secoes.length} seções`);
+  afirmar(md.includes("sem IA") && md.includes("hipótese"), "relatório não declara método e limites");
+  fs.writeFileSync(path.join(SAIDA, "universalidade-2026-10-17.md"), md);
+  return "9 slides analisados (função, conceito, referências, justificativas, pontuação e layout)";
+});
+
 await contexto.close();
 await navegador.close();
 await derrubarServidor();
+servidorFontes.close();
 fs.rmSync(DADOS, { recursive: true, force: true });
 
 const ok = resultados.filter((r) => r.ok).length;
