@@ -52,7 +52,7 @@ export function renderSlide(slide, i, ctx) {
   const escT = slide.escala_titulo ? limitar(slide.escala_titulo, 0.85, 1.15) : 1;
   const escX = slide.escala_texto ? limitar(slide.escala_texto, 0.9, 1.1) : 1;
   const estilo = escX !== 1 ? ` style="--tam-texto:${(42 * escX).toFixed(1)}px;--tam-complemento:${(46 * escX).toFixed(1)}px"` : "";
-  const alinhar = slide.alinhamento === "centro" ? " alinhar-centro" : "";
+  const alinhar = (slide.alinhamento === "centro" ? " alinhar-centro" : "") + (creditoFoto(slide) ? " tem-credito" : "");
   return `<section class="slide fundo-${slide.fundo} t-${slide.template}${alinhar}" id="${id}" data-indice="${i + 1}" data-escala-titulo="${escT}"${estilo}>
   <header class="meta" data-box="meta" data-zona="meta">
     <span class="perfil">${esc(ctx.perfil)}</span>

@@ -268,8 +268,11 @@
 .foto-detalhe--sinal-a { width: 480px; height: 300px; }
 .foto-detalhe--sinal-b { width: 440px; height: 300px; }
 .foto-detalhe--sinal-c { width: 888px; height: 330px; }
+/* com crédito, o conteúdo sobe para abrir espaço no rodapé */
+.tem-credito .conteudo:not(.encerramento):not(.capa--fundo) { bottom: 160px; }
+.tem-credito .capa--fundo { bottom: 160px; }
 .credito-foto {
-  position: absolute; left: var(--margem-x); bottom: 40px; max-width: 760px; z-index: 3;
+  position: absolute; left: var(--margem-x); right: var(--margem-x); bottom: 40px; z-index: 3;
   font-family: var(--fonte-texto); font-size: 22px; font-weight: 500; line-height: 1.2;
 }
 .credito-foto span {
