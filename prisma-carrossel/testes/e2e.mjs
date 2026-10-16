@@ -106,6 +106,9 @@ await new Promise((r) => servidorFontes.listen(PORTA_FONTES, "127.0.0.1", r));
 
 let servidor = null;
 async function subirServidor() {
+  // nunca testar contra uma instância que já estava rodando (dados de outra execução)
+  const ocupada = await fetch(`${URL}/api/saude`).then(() => true, () => false);
+  if (ocupada) throw new Error(`a porta ${PORTA} já está em uso por outra instância; encerre-a antes de testar`);
   servidor = spawn(process.execPath, [path.join(RAIZ, "servidor/index.js")], {
     env: { ...process.env, PRISMA_DADOS: DADOS, PRISMA_PORTA: String(PORTA), PRISMA_ABRIR: "0", PRISMA_URL_COMMONS: FONTES, PRISMA_TESTE_FONTES: "1" },
     stdio: ["ignore", "pipe", "pipe"],

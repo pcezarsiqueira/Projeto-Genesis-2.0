@@ -1,4 +1,4 @@
-# PRISMA Studio — Carrosséis (v2.0)
+# PRISMA Studio — Carrosséis (v2.1)
 
 Aplicativo local para criar, editar e exportar carrosséis 1080 × 1350 pelo navegador. Ele funciona sem terminal, sem GitHub e sem editar JSON durante o uso normal.
 
@@ -75,6 +75,60 @@ No macOS ou Linux: `./iniciar-prisma.sh` (instala na primeira vez e abre o naveg
 
 ---
 
+## Universalidade visual (v2.1)
+
+Ajuda a escolher referências que tornam uma ideia abstrata reconhecível: uma foto sua, uma situação do cotidiano, um filme conhecido, um episódio histórico, uma metáfora visual, ou nenhuma imagem quando a tipografia resolve melhor.
+
+### Minha Biblioteca (menu superior)
+- Envio de várias fotos de uma vez, álbuns (nove já criados: fotos profissionais, palestras, expressões, figurinos…), busca por nome, etiqueta ou descrição, favoritos.
+- **Ponto de interesse**: clique na foto para marcar o que não pode ser cortado (por exemplo, seu rosto). Os recortes nos slides partem desse ponto.
+- **Tipos e direitos de uso**:
+
+| Tipo | Estado | Pode entrar na arte? |
+|---|---|---|
+| Foto pessoal / imagem própria | Aprovada para exportação | Sim |
+| Licenciada (acervo ou banco de imagens) | Uso condicionado | Só depois de você conferir a licença e confirmar as condições, ou registrar uma autorização obtida |
+| Referência de inspiração | Referência | Nunca: fica só para consulta |
+
+- O servidor impede inserir imagens não aprovadas e a exportação aponta erro se uma aprovação for revogada depois.
+- Substituir arquivo e remover pedem confirmação. Remover leva a imagem para `dados/lixeira/biblioteca`. Carrosséis que já usam a foto guardam a cópia deles, então as artes prontas não mudam.
+
+### Aba "Referências" no editor
+Para o slide selecionado, a aba mostra:
+- a função editorial, o conceito central e a reação pretendida;
+- o layout recomendado;
+- referências do **repertório curado do PRISMA**, cada uma com o tipo de conexão (literal, metafórica, cultural, cotidiana, humorística, narrativa), a explicação, a familiaridade estimada, o risco de distração e a disponibilidade de imagem.
+- Filtros: Minhas fotos, Cotidiano, Cinema e séries, Humor, Cultura brasileira, Metáforas, Imagens licenciadas, Apenas tipografia.
+- **Selecionar** registra a referência escolhida e **não muda a arte**. **Rejeitar** esconde a sugestão nesse slide. **Usar foto pessoal** abre a biblioteca. **Buscar imagens** abre a busca em acervos com o termo da referência.
+- Inserir uma imagem sempre pede confirmação: mostra o modo, o crédito exigido e um aviso se a resolução for baixa. Dá para desfazer com Ctrl+Z.
+- **Pontuação 0–100**: estimativa editorial calculada por regras documentadas na própria aba (aderência ao conceito, familiaridade estimada, força metafórica, disponibilidade de imagem, função do slide, risco de distração). Não é previsão de alcance. A familiaridade é hipótese, sem dados de audiência.
+- **Relatório**: `/download/<id>/universalidade` gera o documento com a análise de todos os slides.
+
+**Como as sugestões são geradas:** cruzando o texto do slide (palavras-chave) com um repertório de cerca de 45 referências escritas à mão (`src/universalidade/repertorio.js`). **Não é IA e não é pesquisa na internet.** Filmes, séries, personagens e novelas aparecem sempre como **referência cultural**, sem direito de reutilizar imagens.
+
+### Busca em acervos (conectores reais)
+
+| Fonte | Chave | Uso das imagens |
+|---|---|---|
+| Wikimedia Commons | Não precisa | Licença lida arquivo por arquivo → uso condicionado |
+| Openverse (Creative Commons) | Não precisa | Licença informada pela fonte → uso condicionado |
+| Unsplash | Access Key gratuita sua (Integrações) | Licença Unsplash → uso condicionado |
+| TMDB (filmes e séries) | Token gratuito seu (Integrações) | **Só referência**: não importável |
+
+- Cada resultado registra título, miniatura, fonte, URL original, autor, licença, obrigações de atribuição, resolução, estado e data da consulta. Nada disso é inventado: o que a fonte não informa aparece como "não informado".
+- Ao importar, o arquivo e os metadados vão para a biblioteca como **uso condicionado**. Os créditos entram na arte (opcional por slide) e no arquivo `creditos.txt` do ZIP.
+- Se a fonte não responder, a tela mostra o erro real e um link para a **pesquisa manual** no site da fonte. Uma imagem achada assim pode ser cadastrada como "Licenciada", preenchendo fonte, autor e licença.
+- O navegador nunca envia URLs para o servidor baixar. A importação usa só resultados que o próprio servidor obteve da API.
+
+### IA
+Nenhum provedor está configurado ou incluído. A interface de provedores está em `servidor/ia.js`. As fotos pessoais só seriam enviadas com consentimento específico (desligado por padrão, em Integrações) e com um provedor realmente configurado. Sem IA, a análise de fotos usa apenas as etiquetas e as descrições que você escreve.
+
+### Exportação
+- O ZIP inclui `creditos.txt` (texto pronto para a legenda e detalhes de licença).
+- A exportação anterior é guardada em `dados/projetos/<id>/exportacao-anteriores/` (as últimas 5). As artes aprovadas da v1 continuam em `saida/`.
+
+---
+
 ## Onde ficam os arquivos
 
 | O quê | Onde |
@@ -84,6 +138,9 @@ No macOS ou Linux: `./iniciar-prisma.sh` (instala na primeira vez e abre o naveg
 | Últimos arquivos gerados | `dados/projetos/<id>/exportacao/` |
 | Versões anteriores (40 por projeto) | `dados/projetos/<id>/historico/` |
 | Projetos excluídos | `dados/lixeira/` |
+| Minha Biblioteca | `dados/biblioteca/` (imagens originais + biblioteca.json) |
+| Chaves de integração | `dados/config.json` (só neste computador) |
+| Exportações anteriores | `dados/projetos/<id>/exportacao-anteriores/` |
 | Cópias feitas antes de importações | `dados/backups/` |
 
 **Faça backup da pasta `dados/`.** É ali que está o seu trabalho.
